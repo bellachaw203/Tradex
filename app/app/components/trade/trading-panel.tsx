@@ -1,10 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import {
-  AnimatePresence,
-  animate,
-  motion,
-  useMotionValue,
-} from 'framer-motion'
+import { AnimatePresence, animate, motion, useMotionValue } from 'framer-motion'
 import { useLevels } from '../../context/levels-context'
 import { type Side, useMarket } from '../../context/market-context'
 import { useNav } from '../../context/nav-context'
@@ -19,6 +14,7 @@ import {
 } from '../../lib/contracts'
 import { tee } from '../../lib/tee-client'
 import { positionsStore } from '../../lib/positions-store'
+import { debug } from '../../lib/debug'
 import { formatUsd } from './format'
 import { toast } from '../toast/toast-context'
 
@@ -62,7 +58,7 @@ function LeverageSlider({
         mass: 0.4,
       })
     },
-    [onChange, maxValue],
+    [onChange, maxValue]
   )
 
   const handleThumbDown = (e: React.PointerEvent) => {
@@ -279,8 +275,7 @@ function LeverageSlider({
                     gridTemplateRows: 'repeat(3, 4px)',
                     gap: 2,
                     placeContent: 'center',
-                    boxShadow:
-                      'rgba(153,152,255,0.3) 0px 2px 10px, rgba(0,0,0,0.1) 0px 1px 3px',
+                    boxShadow: 'rgba(153,152,255,0.3) 0px 2px 10px, rgba(0,0,0,0.1) 0px 1px 3px',
                   }}
                 >
                   {Array.from({ length: 6 }).map((_, i) => (
@@ -401,10 +396,7 @@ export default function TradingPanel() {
   const margin = Number(amount) || 0
   const notional = margin * leverage
   const fee = notional * 0.00045
-  const liquidation =
-    side === 'long'
-      ? mark * (1 - 0.92 / leverage)
-      : mark * (1 + 0.92 / leverage)
+  const liquidation = side === 'long' ? mark * (1 - 0.92 / leverage) : mark * (1 + 0.92 / leverage)
 
   useEffect(() => {
     if (!takeProfitEnabled) {
@@ -432,7 +424,10 @@ export default function TradingPanel() {
 
   const handleSubmit = async () => {
     if (!connected || !publicKey) {
-      toast.warning('Connect wallet', `Connect a wallet before placing a ${actionLabel.toLowerCase()} order.`)
+      toast.warning(
+        'Connect wallet',
+        `Connect a wallet before placing a ${actionLabel.toLowerCase()} order.`
+      )
       return
     }
 
@@ -450,7 +445,7 @@ export default function TradingPanel() {
       openPortfolio()
       toast.warning(
         'Insufficient balance',
-        `You need ${formatUsd(margin)} but only have ${formatUsd(balanceDollars)}.`,
+        `You need ${formatUsd(margin)} but only have ${formatUsd(balanceDollars)}.`
       )
       return
     }
@@ -460,7 +455,7 @@ export default function TradingPanel() {
       if (!limitPrice || price <= 0 || Number.isNaN(price)) {
         toast.warning(
           orderType === 'limit' ? 'Set limit price' : 'Set trigger price',
-          `A ${orderType} order needs a valid execution price.`,
+          `A ${orderType} order needs a valid execution price.`
         )
         return
       }
@@ -472,7 +467,8 @@ export default function TradingPanel() {
     try {
       const collateralUnits = BigInt(Math.round(margin * PRICE_SCALE))
       const markPrice = Math.round(mark * PRICE_SCALE)
-      const hintPrice = orderType === 'market' ? markPrice : Math.round(Number(limitPrice) * PRICE_SCALE)
+      const hintPrice =
+        orderType === 'market' ? markPrice : Math.round(Number(limitPrice) * PRICE_SCALE)
       const tpUnits = tpInput ? Math.round(parseFloat(tpInput) * PRICE_SCALE) : 0
       const slUnits = slInput ? Math.round(parseFloat(slInput) * PRICE_SCALE) : 0
       const portfolioKey = marginMode === 'cross' ? crossMarginKey(publicKey) : undefined
@@ -490,21 +486,28 @@ export default function TradingPanel() {
 
       // Step 1: Ask TEE to store order secrets + generate both proofs in parallel
       // init stores secrets so the TEE can later match this order
-      console.log('step: calling tee.init + tee.noteProof…')
+      debug('step: calling tee.init + tee.noteProof…')
       const [initResult, noteResult] = await Promise.all([
-        tee.init({ side: rawSide, price: hintPrice, size: 1_000_000_000, leverage, nonce: orderNonce, secret: orderSecret }),
+        tee.init({
+          side: rawSide,
+          price: hintPrice,
+          size: 1_000_000_000,
+          leverage,
+          nonce: orderNonce,
+          secret: orderSecret,
+        }),
         tee.noteProof(noteAmount, noteSecret),
       ])
-      console.log('step: tee proofs done, commitment=', initResult.commitment.slice(0,16))
+      debug('step: tee proofs done, commitment=', initResult.commitment.slice(0, 16))
       const commitment = initResult.commitment
       toast.update(progressId, { description: 'Getting commitment proof…', progress: 30 })
 
-      console.log('step: calling tee.commitProof…')
+      debug('step: calling tee.commitProof…')
       const commitProofResult = await tee.commitProof(commitment)
-      console.log('step: commitProof done')
+      debug('step: commitProof done')
 
       const commitScVal = proofJsonToScVal(commitProofResult.proof)
-      const noteScVal   = proofJsonToScVal(noteResult.proof)
+      const noteScVal = proofJsonToScVal(noteResult.proof)
 
       // Soroban's simulator rejects multi-op transactions, so we send three
       // separate signing prompts. The ops are independent at build-time
@@ -776,10 +779,7 @@ export default function TradingPanel() {
           <SummaryRow label="Notional" value={formatUsd(notional)} />
           <SummaryRow label="Est. fee" value={formatUsd(fee)} />
           <SummaryRow label="Liq. price" value={formatUsd(liquidation)} />
-          <SummaryRow
-            label="Margin"
-            value={marginMode === 'cross' ? 'Cross' : 'Isolated'}
-          />
+          <SummaryRow label="Margin" value={marginMode === 'cross' ? 'Cross' : 'Isolated'} />
           <div className="flex items-center justify-between">
             <span>Privacy</span>
             <span className="text-brand-violet">Private (shielded)</span>
@@ -801,14 +801,11 @@ export default function TradingPanel() {
               animate={{ x: ['-100%', '100%'] }}
               transition={{ duration: 1.2, repeat: Infinity, ease: 'linear' }}
               style={{
-                background:
-                  'linear-gradient(90deg, transparent 0%, white 50%, transparent 100%)',
+                background: 'linear-gradient(90deg, transparent 0%, white 50%, transparent 100%)',
               }}
             />
           )}
-          <span className="relative">
-            {submitting ? 'Signing…' : `${actionLabel} ${symbol}`}
-          </span>
+          <span className="relative">{submitting ? 'Signing…' : `${actionLabel} ${symbol}`}</span>
         </button>
       </div>
     </div>

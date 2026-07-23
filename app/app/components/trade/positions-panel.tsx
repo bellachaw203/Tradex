@@ -1,8 +1,15 @@
 import { useEffect, useState } from 'react'
 import { useMarket } from '../../context/market-context'
 import { useWallet } from '../../context/wallet-context'
-import { buildCancelPositionTx, getPosition, proofJsonToScVal, submitAndWait, type PositionMeta } from '../../lib/contracts'
+import {
+  buildCancelPositionTx,
+  getPosition,
+  proofJsonToScVal,
+  submitAndWait,
+  type PositionMeta,
+} from '../../lib/contracts'
 import { positionsStore, type StoredPosition } from '../../lib/positions-store'
+import { debug } from '../../lib/debug'
 import { tee } from '../../lib/tee-client'
 import { toast } from '../toast/toast-context'
 import { formatUsd } from './format'
@@ -17,11 +24,16 @@ interface LivePosition {
 
 function statusLabel(status: bigint): string {
   switch (Number(status)) {
-    case 0: return 'Open'
-    case 1: return 'Matched'
-    case 2: return 'Closed'
-    case 3: return 'Cancelled'
-    default: return '—'
+    case 0:
+      return 'Open'
+    case 1:
+      return 'Matched'
+    case 2:
+      return 'Closed'
+    case 3:
+      return 'Cancelled'
+    default:
+      return '—'
   }
 }
 
@@ -30,7 +42,7 @@ function calcPnl(meta: PositionMeta, markPrice: number): number {
   const col = Number(meta.effectiveCollateral) / PRICE_SCALE
   const lev = Number(meta.leverage)
   const side = Number(meta.side) === 0 ? 1 : -1
-  return col * lev * side * (markPrice - entry) / entry
+  return (col * lev * side * (markPrice - entry)) / entry
 }
 
 export default function PositionsPanel() {
@@ -83,7 +95,12 @@ export default function PositionsPanel() {
         description: (
           <span>
             Collateral refunded to a shielded note{' · '}
-            <a href={closeUrl} target="_blank" rel="noopener noreferrer" className="underline hover:opacity-80">
+            <a
+              href={closeUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline hover:opacity-80"
+            >
               View tx ↗
             </a>
           </span>
@@ -117,11 +134,20 @@ export default function PositionsPanel() {
     async function fetchAll() {
       setLoading(true)
       const stored = positionsStore.forWallet(publicKey!)
-      console.log('positions-panel: stored from localStorage:', stored.length, stored.map(s => s.commitment.slice(0, 12)))
+      debug(
+        'positions-panel: stored from localStorage:',
+        stored.length,
+        stored.map((s) => s.commitment.slice(0, 12))
+      )
       const results = await Promise.all(
         stored.map(async (s) => {
           const meta = await getPosition(s.commitment, publicKey || undefined)
-          console.log('positions-panel: getPosition for', s.commitment.slice(0,12), '->', meta ? 'found' : 'null')
+          debug(
+            'positions-panel: getPosition for',
+            s.commitment.slice(0, 12),
+            '->',
+            meta ? 'found' : 'null'
+          )
           return { stored: s, meta }
         })
       )
@@ -137,9 +163,7 @@ export default function PositionsPanel() {
     }
   }, [connected, publicKey])
 
-  const active = positions.filter(
-    (p) => !p.meta || Number(p.meta.status) < 2
-  )
+  const active = positions.filter((p) => !p.meta || Number(p.meta.status) < 2)
 
   return (
     <div className="flex h-full flex-col bg-surface-primary">
@@ -161,9 +185,7 @@ export default function PositionsPanel() {
           </button>
         ))}
         {loading && (
-          <span className="ml-auto text-[10px] text-text-quaternary animate-pulse">
-            syncing…
-          </span>
+          <span className="ml-auto text-[10px] text-text-quaternary animate-pulse">syncing…</span>
         )}
       </div>
 
@@ -211,15 +233,23 @@ export default function PositionsPanel() {
                     <span className={isLong ? 'text-bullish-green' : 'text-bearish-red'}>
                       {isLong ? 'Long' : 'Short'} {lev}x
                     </span>
-                    <span className="text-right text-text-tertiary">{meta ? formatUsd(entry) : '—'}</span>
-                    <span className="text-right text-text-tertiary">{meta ? formatUsd(mark) : '—'}</span>
-                    <span className="text-right text-text-tertiary">{meta ? formatUsd(col, 0) : '—'}</span>
+                    <span className="text-right text-text-tertiary">
+                      {meta ? formatUsd(entry) : '—'}
+                    </span>
+                    <span className="text-right text-text-tertiary">
+                      {meta ? formatUsd(mark) : '—'}
+                    </span>
+                    <span className="text-right text-text-tertiary">
+                      {meta ? formatUsd(col, 0) : '—'}
+                    </span>
                     <span
                       className={`text-right font-medium ${pnl >= 0 ? 'text-bullish-green' : 'text-bearish-red'}`}
                     >
                       {meta ? (pnl >= 0 ? '+' : '') + formatUsd(pnl) : '—'}
                     </span>
-                    <span className="text-right text-text-quaternary">{meta ? formatUsd(liqPrice) : '—'}</span>
+                    <span className="text-right text-text-quaternary">
+                      {meta ? formatUsd(liqPrice) : '—'}
+                    </span>
                     <span className="text-right text-text-quaternary">
                       {meta ? statusLabel(meta.status) : 'syncing…'}
                     </span>

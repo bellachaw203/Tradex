@@ -1,12 +1,6 @@
 import { useCallback, useState } from 'react'
-import {
-  IconCheck,
-  IconCopy,
-  IconPlus,
-  IconShield,
-  IconTrash,
-  IconX,
-} from '@tabler/icons-react'
+import { IconCheck, IconCopy, IconPlus, IconShield, IconTrash, IconX } from '@tabler/icons-react'
+import { debug } from '../../lib/debug'
 
 // ── Note storage ──────────────────────────────────────────────────────────────
 
@@ -27,16 +21,18 @@ function loadNotes(): PoolNote[] {
 
     // Migrate from portfolio deposits (tradex-notes)
     const legacy = JSON.parse(localStorage.getItem('tradex-notes') ?? '[]')
-    console.log('pool-migration: legacy notes from tradex-notes:', legacy.length)
+    debug('pool-migration: legacy notes from tradex-notes:', legacy.length)
     if (legacy.length === 0) return []
 
-    const migrated: PoolNote[] = legacy.map((n: { note_cmt: string; secret: number; amount: number; depositedAt: number }) => ({
-      id: n.note_cmt,
-      secret: String(n.secret),
-      nullifier: '',
-      status: 'deposited' as const,
-      createdAt: n.depositedAt,
-    }))
+    const migrated: PoolNote[] = legacy.map(
+      (n: { note_cmt: string; secret: number; amount: number; depositedAt: number }) => ({
+        id: n.note_cmt,
+        secret: String(n.secret),
+        nullifier: '',
+        status: 'deposited' as const,
+        createdAt: n.depositedAt,
+      })
+    )
     saveNotes(migrated)
     return migrated
   } catch {
@@ -103,7 +99,9 @@ const STATUS_STYLE: Record<PoolNote['status'], string> = {
 
 function StatusBadge({ status }: { status: PoolNote['status'] }) {
   return (
-    <span className={`rounded-[4px] px-1.5 py-0.5 text-[10px] font-semibold ${STATUS_STYLE[status]}`}>
+    <span
+      className={`rounded-[4px] px-1.5 py-0.5 text-[10px] font-semibold ${STATUS_STYLE[status]}`}
+    >
       {status}
     </span>
   )
