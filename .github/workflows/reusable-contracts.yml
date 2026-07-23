@@ -1,0 +1,190 @@
+
+# Reusable workflow: build, test and validate the Soroban smart contracts.
+#
+# Called by ci.yml on every pull request, and by release.yml / cd.yml when
+# artifacts are needed for publication or deployment. Keeping it reusable means
+# the contracts are built exactly one way, whatever the trigger.
+name: (reusable) Contracts
+
+on:
+  workflow_call:
+    inputs:
+      upload-artifacts:
+        description: Upload the compiled wasm as a workflow artifact.
+        type: boolean
+        required: false
+        default: false
+      artifact-name:
+        description: Name of the uploaded artifact.
+        type: string
+        required: false
+        default: contracts-wasm
+      cache-save:
+        description: Allow this run to write the shared cargo cache.
+        type: boolean
+        required: false
+        default: false
+    outputs:
+      artifact-name:
+        description: Name of the uploaded wasm artifact, if any.
+        value: ${{ jobs.build.outputs.artifact-name }}
+      wasm-sha256:
+        description: SHA-256 checksums of the built contracts.
+        value: ${{ jobs.build.outputs.wasm-sha256 }}
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  # ── Fast feedback: formatting and lints fail in under a minute ────────────
+  quality:
+    name: Format & lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: ./.github/actions/setup-rust
+        with:
+          cache-key: clippy
+          cache-save: ${{ inputs.cache-save }}
+
+      - name: Check formatting
+        run: cargo fmt --all -- --check
+
+      - uses: ./.github/actions/circuit-keys
+
+      # `-D warnings` on the clippy invocation only — not in RUSTFLAGS — so it
+      # applies to this workspace and does not invalidate the dependency cache.
+      - name: Clippy (workspace, all targets)
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+      # tools/e2e and keepers declare their own [workspace] and are excluded
+      # from the root workspace, so --workspace above does not reach them.
+      #
+      # These are blocking on *compilation* but advisory on lints: they carry
+      # pre-existing clippy debt (~90 warnings) that predates this pipeline.
+      # Clean them up, then move them into the step above to make lints binding.
+      - name: Clippy (standalone tool crates — compile blocking, lints advisory)
+        run: |
+          status=0
+          {
+            echo "### Tool-crate lint debt"
+            echo
+            echo "| Crate | Warnings |"
+            echo "| --- | ---: |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          for manifest in tools/e2e/Cargo.toml keepers/Cargo.toml; do
+            [ -f "$manifest" ] || continue
+            echo "::group::clippy $manifest"
+            if cargo clippy --manifest-path "$manifest" --all-targets 2>&1 | tee /tmp/clippy.log; then
+              count="$(grep -c '^warning' /tmp/clippy.log || true)"
+              echo "| \`$manifest\` | $count |" >> "$GITHUB_STEP_SUMMARY"
+              [ "$count" -gt 0 ] && echo "::warning file=$manifest::$count clippy warnings (advisory)"
+            else
+              echo "::error file=$manifest::failed to compile"
+              status=1
+            fi
+            echo "::endgroup::"
+          done
+          exit $status
+
+  # ── Contract unit + integration tests ────────────────────────────────────
+  test:
+    name: Test (${{ matrix.name }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      # One suite failing should not hide the others.
+      fail-fast: false
+      matrix:
+        include:
+          - name: core contracts
+            packages: -p types -p collateral -p orderbook -p perp-engine
+          - name: shielded pool
+            packages: -p shielded-pool
+          - name: circuit tooling
+            packages: -p rust-circuits
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: ./.github/actions/setup-rust
+        with:
+          cache-key: test
+
+      - uses: ./.github/actions/circuit-keys
+
+      - name: cargo test ${{ matrix.packages }}
+        run: cargo test --locked ${{ matrix.packages }}
+
+  # ── Wasm build + artifact validation ─────────────────────────────────────
+  build:
+    name: Build wasm
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    outputs:
+      artifact-name: ${{ steps.publish.outputs.artifact-name }}
+      wasm-sha256: ${{ steps.checksums.outputs.sha256 }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: ./.github/actions/setup-rust
+        with:
+          cache-key: wasm
+          binaryen: 'true'
+
+      - uses: ./.github/actions/circuit-keys
+
+      # All five contracts in one invocation. Building them separately changes
+      # cargo's feature unification and produces measurably different wasm, so
+      # the command here must match the one in deploy/deploy.sh.
+      - name: Build contracts (wasm32v1-none, release)
+        run: |
+          cargo build --locked --target wasm32v1-none --release \
+            -p orderbook -p perp-engine -p shielded-pool -p collateral -p verifier-groth16
+
+      # Always, not just for releases: wasm-opt roughly halves these contracts,
+      # so the unoptimized output is not what gets deployed. Validating and
+      # publishing the optimized artifact keeps CI honest about the real size.
+      - name: Optimize with wasm-opt
+        run: |
+          for w in orderbook perp_engine shielded_pool collateral verifier_groth16; do
+            path="target/wasm32v1-none/release/$w.wasm"
+            before=$(wc -c < "$path")
+            wasm-opt -Oz --strip-debug --strip-producers --strip-target-features "$path" -o "$path"
+            echo "$w: $before -> $(wc -c < "$path") bytes"
+          done
+
+      - name: Validate artifacts
+        run: ./scripts/ci/validate-wasm.sh
+
+      - name: Compute checksums
+        id: checksums
+        run: |
+          cd target/wasm32v1-none/release
+          sha256sum ./*.wasm | tee checksums.txt
+          {
+            echo 'sha256<<EOF'
+            cat checksums.txt
+            echo EOF
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Upload wasm artifacts
+        if: inputs.upload-artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.artifact-name }}
+          path: |
+            target/wasm32v1-none/release/*.wasm
+            target/wasm32v1-none/release/checksums.txt
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Record artifact name
+        id: publish
+        if: inputs.upload-artifacts
+        run: echo "artifact-name=${{ inputs.artifact-name }}" >> "$GITHUB_OUTPUT"
