@@ -17,7 +17,8 @@ const OPTIONS: {
     id: 'private',
     label: 'Private (shielded)',
     icon: <IconEyeOff size={18} stroke={1.8} />,
-    description: 'Collateral is drawn from a shielded note; your address is never attached to the position.',
+    description:
+      'Collateral is drawn from a shielded note; your address is never attached to the position.',
   },
 ]
 
@@ -70,7 +71,9 @@ export default function SettingsModal({ onClose }: { onClose: () => void }) {
                 }`}
               >
                 <div className="flex items-center gap-2">
-                  <span className={selected ? 'text-brand-violet' : 'text-text-tertiary'}>{opt.icon}</span>
+                  <span className={selected ? 'text-brand-violet' : 'text-text-tertiary'}>
+                    {opt.icon}
+                  </span>
                   <span className="text-[13px] font-semibold text-text-primary">{opt.label}</span>
                   {selected && (
                     <span className="ml-auto rounded-[4px] bg-brand-violet px-1.5 py-0.5 text-[10px] font-semibold text-white">

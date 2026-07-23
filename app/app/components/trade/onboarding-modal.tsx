@@ -2,7 +2,12 @@ import { useState, useEffect } from 'react'
 import { IconX, IconWallet, IconCoin, IconCheck, IconArrowRight } from '@tabler/icons-react'
 import { useWallet } from '../../context/wallet-context'
 import { toast } from '../toast/toast-context'
-import { mintUsdcFromIssuer, getUsdcBalance, buildTrustUsdcTx, submitAndWait } from '../../lib/contracts'
+import {
+  mintUsdcFromIssuer,
+  getUsdcBalance,
+  buildTrustUsdcTx,
+  submitAndWait,
+} from '../../lib/contracts'
 
 const STORAGE_KEY = 'tradex-onboarded'
 const MINT_AMOUNT = 10_000_000_000n
@@ -28,7 +33,9 @@ export default function OnboardingModal({ onClose }: { onClose: () => void }) {
 
   useEffect(() => {
     if (connected && publicKey && step === 'mint') {
-      getUsdcBalance(publicKey).then((b: bigint | null) => { if (b !== null) setBalance(b) })
+      getUsdcBalance(publicKey).then((b: bigint | null) => {
+        if (b !== null) setBalance(b)
+      })
     }
   }, [connected, publicKey, step])
 
@@ -61,7 +68,9 @@ export default function OnboardingModal({ onClose }: { onClose: () => void }) {
   return (
     <div
       className="fixed inset-0 z-[80] flex items-center justify-center bg-black/35 p-6 backdrop-blur-sm"
-      onMouseDown={(e) => { if (e.currentTarget === e.target && !minting) onClose() }}
+      onMouseDown={(e) => {
+        if (e.currentTarget === e.target && !minting) onClose()
+      }}
     >
       <div className="flex h-[min(520px,86vh)] w-[min(520px,94vw)] flex-col overflow-hidden rounded-[14px] border border-border-subtle bg-surface-primary shadow-2xl">
         <div className="flex shrink-0 items-center gap-3 border-b border-border-subtle px-6 py-4">
@@ -128,17 +137,26 @@ function WelcomeStep({ onNext }: { onNext: () => void }) {
   return (
     <div className="flex flex-col gap-5">
       <p className="text-[13px] leading-relaxed text-text-secondary">
-        <strong className="text-text-primary">Tradex</strong> is a privacy-first perpetual
-        futures exchange built on Stellar. Trade BTC, Gold, equities, and more with
-        up to <strong className="text-text-primary">50× leverage</strong> — all verified
-        on-chain with zero-knowledge proofs.
+        <strong className="text-text-primary">Tradex</strong> is a privacy-first perpetual futures
+        exchange built on Stellar. Trade BTC, Gold, equities, and more with up to{' '}
+        <strong className="text-text-primary">50× leverage</strong> — all verified on-chain with
+        zero-knowledge proofs.
       </p>
 
       <div className="flex flex-col gap-2">
         {[
-          { title: 'ZK-Verified', body: 'Every order matched off-chain, verified on-chain with Groth16' },
-          { title: 'Shielded Notes', body: 'Your positions and collateral are privacy-preserving by default' },
-          { title: 'Non-Custodial', body: 'Collateral lives in smart contracts you audit. Connect and trade.' },
+          {
+            title: 'ZK-Verified',
+            body: 'Every order matched off-chain, verified on-chain with Groth16',
+          },
+          {
+            title: 'Shielded Notes',
+            body: 'Your positions and collateral are privacy-preserving by default',
+          },
+          {
+            title: 'Non-Custodial',
+            body: 'Collateral lives in smart contracts you audit. Connect and trade.',
+          },
         ].map((f) => (
           <div
             key={f.title}
@@ -200,7 +218,9 @@ function MintStep({
   onSkip: () => void
 }) {
   const hasBalance = balance > 0n
-  const displayBal = (Number(balance) / PRICE_SCALE).toLocaleString(undefined, { maximumFractionDigits: 2 })
+  const displayBal = (Number(balance) / PRICE_SCALE).toLocaleString(undefined, {
+    maximumFractionDigits: 2,
+  })
 
   return (
     <div className="flex flex-1 flex-col gap-5">
@@ -216,8 +236,13 @@ function MintStep({
 
       {publicKey && (
         <div className="rounded-[10px] border border-border-subtle bg-surface-primary p-3">
-          <div className="text-[10px] uppercase tracking-widest text-text-quaternary">Connected Account</div>
-          <div className="mt-0.5 text-[12px] text-text-secondary" style={{ fontFamily: 'var(--font-mono)' }}>
+          <div className="text-[10px] uppercase tracking-widest text-text-quaternary">
+            Connected Account
+          </div>
+          <div
+            className="mt-0.5 text-[12px] text-text-secondary"
+            style={{ fontFamily: 'var(--font-mono)' }}
+          >
             {publicKey.slice(0, 8)}…{publicKey.slice(-8)}
           </div>
         </div>
@@ -245,7 +270,9 @@ function MintStep({
 }
 
 function DoneStep({ balance, onFinish }: { balance: bigint; onFinish: () => void }) {
-  const displayBal = (Number(balance) / PRICE_SCALE).toLocaleString(undefined, { maximumFractionDigits: 2 })
+  const displayBal = (Number(balance) / PRICE_SCALE).toLocaleString(undefined, {
+    maximumFractionDigits: 2,
+  })
 
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-6">
@@ -259,9 +286,8 @@ function DoneStep({ balance, onFinish }: { balance: bigint; onFinish: () => void
         </p>
       </div>
       <div className="rounded-[10px] border border-border-subtle bg-surface-primary p-4 text-[12px] leading-relaxed text-text-tertiary">
-        When you place an order, Tradex generates a zero-knowledge proof inside a
-        trusted execution environment (TEE). Your position is linked to a shielded
-        note — not your wallet address.
+        When you place an order, Tradex generates a zero-knowledge proof inside a trusted execution
+        environment (TEE). Your position is linked to a shielded note — not your wallet address.
       </div>
       <button
         onClick={onFinish}

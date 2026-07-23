@@ -15,7 +15,12 @@ import {
   IconWallet,
   IconX,
 } from '@tabler/icons-react'
-import { MARKET_CATALOG, symbolToSlug, useMarket, type MarketDefinition } from '../../context/market-context'
+import {
+  MARKET_CATALOG,
+  symbolToSlug,
+  useMarket,
+  type MarketDefinition,
+} from '../../context/market-context'
 import { THEMES, useTheme } from '../../context/theme-context'
 import { formatContractBalance, useWallet } from '../../context/wallet-context'
 import { formatCompactUsd, formatUsd } from './format'
@@ -32,12 +37,23 @@ export default function MarketBar({
   onOpenSettings: () => void
   onNavigate: (path: string) => void
 }) {
-  const { symbol, mark, index, changePct, funding, openInterest, volume24h, allPrices, candlesLoading } = useMarket()
+  const {
+    symbol,
+    mark,
+    index,
+    changePct,
+    funding,
+    openInterest,
+    volume24h,
+    allPrices,
+    candlesLoading,
+  } = useMarket()
   const { theme, setTheme } = useTheme()
   const [marketOpen, setMarketOpen] = useState(false)
   const [themeOpen, setThemeOpen] = useState(false)
   const [alertsOpen, setAlertsOpen] = useState(false)
-  const activeMarket = MARKET_CATALOG.find((market) => market.symbol === symbol) ?? MARKET_CATALOG[0]!
+  const activeMarket =
+    MARKET_CATALOG.find((market) => market.symbol === symbol) ?? MARKET_CATALOG[0]!
   const activeTheme = THEMES.find((item) => item.id === theme) ?? THEMES[0]!
   const positive = changePct >= 0
 
@@ -64,7 +80,9 @@ export default function MarketBar({
               </span>
             )}
             <span className="min-w-0 text-left">
-              <span className="block truncate text-[13px] font-bold text-text-primary">{activeMarket.symbol}</span>
+              <span className="block truncate text-[13px] font-bold text-text-primary">
+                {activeMarket.symbol}
+              </span>
               <span className="block truncate text-[10px] uppercase tracking-widest text-text-quaternary">
                 {activeMarket.category}
               </span>
@@ -75,28 +93,48 @@ export default function MarketBar({
 
         <div className="hidden min-w-0 items-center gap-6 md:flex">
           <Stat label="Index (Pyth)">
-            {candlesLoading && !mark ? <span className="text-text-quaternary">…</span> : formatUsd(index)}
+            {candlesLoading && !mark ? (
+              <span className="text-text-quaternary">…</span>
+            ) : (
+              formatUsd(index)
+            )}
           </Stat>
-          <Stat label="Mark">{candlesLoading && !mark ? <span className="text-text-quaternary">…</span> : formatUsd(mark)}</Stat>
+          <Stat label="Mark">
+            {candlesLoading && !mark ? (
+              <span className="text-text-quaternary">…</span>
+            ) : (
+              formatUsd(mark)
+            )}
+          </Stat>
           <Stat label="24h">
             {candlesLoading ? (
               <span className="text-text-quaternary">…</span>
             ) : (
               <span className={positive ? 'text-bullish-green' : 'text-bearish-red'}>
-                {positive ? '+' : ''}{changePct.toFixed(2)}%
+                {positive ? '+' : ''}
+                {changePct.toFixed(2)}%
               </span>
             )}
           </Stat>
           <Stat label="Funding 8h">
             <span className={funding >= 0 ? 'text-brand-violet' : 'text-bearish-red'}>
-              {funding >= 0 ? '+' : ''}{(funding * 100).toFixed(4)}%
+              {funding >= 0 ? '+' : ''}
+              {(funding * 100).toFixed(4)}%
             </span>
           </Stat>
           <Stat label="Open Interest">
-            {openInterest != null ? formatCompactUsd(openInterest) : <span className="text-text-quaternary">—</span>}
+            {openInterest != null ? (
+              formatCompactUsd(openInterest)
+            ) : (
+              <span className="text-text-quaternary">—</span>
+            )}
           </Stat>
           <Stat label="Volume 24h">
-            {volume24h != null ? formatCompactUsd(volume24h) : <span className="text-text-quaternary">—</span>}
+            {volume24h != null ? (
+              formatCompactUsd(volume24h)
+            ) : (
+              <span className="text-text-quaternary">—</span>
+            )}
           </Stat>
         </div>
 
@@ -144,7 +182,9 @@ export default function MarketBar({
                       }`}
                     >
                       {item.label}
-                      {theme === item.id && <span className="h-1.5 w-1.5 rounded-full bg-brand-violet" />}
+                      {theme === item.id && (
+                        <span className="h-1.5 w-1.5 rounded-full bg-brand-violet" />
+                      )}
                     </button>
                   ))}
                 </div>
@@ -183,7 +223,9 @@ export default function MarketBar({
           onSelect={(next) => {
             const market = MARKET_CATALOG.find((item) => item.symbol === next)
             setMarketOpen(false)
-            toast.success('Market selected', `${market?.name ?? next} perpetual is now active.`, { duration: 3000 })
+            toast.success('Market selected', `${market?.name ?? next} perpetual is now active.`, {
+              duration: 3000,
+            })
             onNavigate(`/trade/${symbolToSlug(next)}`)
           }}
           livePrices={allPrices}
@@ -215,7 +257,7 @@ function MarketModal({
         const normalized = `${market.symbol} ${market.name} ${market.category}`.toLowerCase()
         return matchesCategory && normalized.includes(query.toLowerCase())
       }),
-    [category, query],
+    [category, query]
   )
 
   return (
@@ -324,8 +366,12 @@ function MarketRow({
           </span>
         )}
         <span className="min-w-0">
-          <span className="block truncate text-[14px] font-bold text-text-primary">{market.symbol}</span>
-          <span className="block truncate text-[12px] text-text-tertiary">{market.name} perpetual</span>
+          <span className="block truncate text-[14px] font-bold text-text-primary">
+            {market.symbol}
+          </span>
+          <span className="block truncate text-[12px] text-text-tertiary">
+            {market.name} perpetual
+          </span>
         </span>
       </span>
       <span className="text-[12px] font-semibold text-text-secondary">{market.category}</span>
@@ -399,8 +445,16 @@ function IconButton({
 }
 
 function WalletButton() {
-  const { connected, connecting, publicKey, balance, balanceLoading, wrongNetwork, connect, disconnect } =
-    useWallet()
+  const {
+    connected,
+    connecting,
+    publicKey,
+    balance,
+    balanceLoading,
+    wrongNetwork,
+    connect,
+    disconnect,
+  } = useWallet()
   const [open, setOpen] = useState(false)
 
   const copyAddress = async () => {
@@ -433,11 +487,7 @@ function WalletButton() {
         }`}
         title={wrongNetwork ? 'Wrong network — click for details' : undefined}
       >
-        {wrongNetwork ? (
-          <IconAlertTriangleFilled size={15} />
-        ) : (
-          <IconWallet size={15} stroke={2} />
-        )}
+        {wrongNetwork ? <IconAlertTriangleFilled size={15} /> : <IconWallet size={15} stroke={2} />}
         <span className="tabular-nums">
           {balanceLoading ? '…' : `$${formatContractBalance(balance)}`}
         </span>
@@ -458,8 +508,12 @@ function WalletButton() {
               </div>
             )}
             <div className="px-3 py-2">
-              <div className="text-[10px] uppercase tracking-widest text-text-quaternary">Address</div>
-              <div className="mt-0.5 truncate font-mono text-[12px] text-text-primary">{publicKey}</div>
+              <div className="text-[10px] uppercase tracking-widest text-text-quaternary">
+                Address
+              </div>
+              <div className="mt-0.5 truncate font-mono text-[12px] text-text-primary">
+                {publicKey}
+              </div>
             </div>
             <button
               onClick={copyAddress}
@@ -473,7 +527,7 @@ function WalletButton() {
                 window.open(
                   `https://stellar.expert/explorer/testnet/account/${publicKey}`,
                   '_blank',
-                  'noopener,noreferrer',
+                  'noopener,noreferrer'
                 )
               }
               className="flex w-full items-center gap-2.5 rounded-[7px] px-3 py-2 text-left text-[12px] font-medium text-text-secondary transition-colors hover:bg-surface-card hover:text-text-primary"

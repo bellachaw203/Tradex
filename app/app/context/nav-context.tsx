@@ -6,7 +6,13 @@ interface NavCtx {
 
 const NavContext = createContext<NavCtx>({ openPortfolio: () => {} })
 
-export function NavProvider({ onActive, children }: { onActive: (label: string) => void; children: ReactNode }) {
+export function NavProvider({
+  onActive,
+  children,
+}: {
+  onActive: (label: string) => void
+  children: ReactNode
+}) {
   return (
     <NavContext.Provider value={{ openPortfolio: () => onActive('Portfolio') }}>
       {children}

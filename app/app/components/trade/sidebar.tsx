@@ -85,8 +85,14 @@ export default function Sidebar({
           className="flex min-w-0 items-center gap-2"
           title={collapsed ? 'Tradex' : undefined}
         >
-          <img src="/apple-touch-icon.png" alt="Tradex" className="h-7 w-7 shrink-0 rounded-[6px] object-cover" />
-          {!collapsed && <span className="truncate text-[14px] font-semibold text-text-primary">tradex</span>}
+          <img
+            src="/apple-touch-icon.png"
+            alt="Tradex"
+            className="h-7 w-7 shrink-0 rounded-[6px] object-cover"
+          />
+          {!collapsed && (
+            <span className="truncate text-[14px] font-semibold text-text-primary">tradex</span>
+          )}
         </button>
       </div>
 
@@ -150,7 +156,9 @@ export default function Sidebar({
 
       {!collapsed && (
         <div className="mx-3 mb-3 rounded-[8px] border border-border-subtle bg-surface-card p-3">
-          <div className="text-[10px] uppercase tracking-widest text-text-quaternary">Margin mode</div>
+          <div className="text-[10px] uppercase tracking-widest text-text-quaternary">
+            Margin mode
+          </div>
           <div className="mt-1 flex items-center justify-between">
             <span className="text-[13px] font-semibold text-text-secondary">Cross</span>
             <span className="rounded-[4px] bg-brand-violet/15 px-1.5 py-0.5 text-[10px] font-semibold text-brand-violet">

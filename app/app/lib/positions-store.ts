@@ -1,11 +1,11 @@
 const STORAGE_KEY = 'cerp_positions'
 
 export interface StoredPosition {
-  commitment: string  // 64-char hex
+  commitment: string // 64-char hex
   symbol: string
   side: 0 | 1
   leverage: number
-  openedAt: number    // Date.now()
+  openedAt: number // Date.now()
 }
 
 function load(): StoredPosition[] {

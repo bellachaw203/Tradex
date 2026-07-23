@@ -113,9 +113,13 @@ export const tee = {
    * Generate a NoteSpend Groth16 proof for a shielded deposit note (~9s).
    * Returns note_cmt, note_null, and proof JSON — all three needed for open_position_from_note.
    */
-  async noteProof(amount: number, secret: number): Promise<{ note_cmt: string; note_null: string; proof: string }> {
+  async noteProof(
+    amount: number,
+    secret: number
+  ): Promise<{ note_cmt: string; note_null: string; proof: string }> {
     const resp = await call('note-proof', { cmd: 'note-proof', amount, secret })
-    if (!resp.ok || !resp.note_cmt || !resp.note_null || !resp.proof) throw new Error(resp.error ?? 'note-proof failed')
+    if (!resp.ok || !resp.note_cmt || !resp.note_null || !resp.proof)
+      throw new Error(resp.error ?? 'note-proof failed')
     return { note_cmt: resp.note_cmt, note_null: resp.note_null, proof: resp.proof }
   },
 
@@ -125,7 +129,8 @@ export const tee = {
    */
   async noteCmt(amount: number, secret: number): Promise<{ note_cmt: string; note_null: string }> {
     const resp = await call('note-cmt', { cmd: 'note-cmt', amount, secret })
-    if (!resp.ok || !resp.note_cmt || !resp.note_null) throw new Error(resp.error ?? 'note-cmt failed')
+    if (!resp.ok || !resp.note_cmt || !resp.note_null)
+      throw new Error(resp.error ?? 'note-cmt failed')
     return { note_cmt: resp.note_cmt, note_null: resp.note_null }
   },
 

@@ -1,50 +1,44 @@
-import { useEffect } from 'react';
-import { Link } from 'react-router';
-import { MARKET_CATALOG, symbolToSlug } from '../context/market-context';
+import { useEffect } from 'react'
+import { Link } from 'react-router'
+import { MARKET_CATALOG, symbolToSlug } from '../context/market-context'
 
 export const meta = () => [
   { title: 'Tradex — On-Chain Perpetuals' },
   {
     name: 'description',
-    content:
-      'Perpetual futures on any asset, settled on-chain with zero-knowledge proofs.',
+    content: 'Perpetual futures on any asset, settled on-chain with zero-knowledge proofs.',
   },
-];
+]
 
-const PILLS = [
-  '7 Markets',
-  'Up to 50× Leverage',
-  'ZK-Verified',
-  'Non-Custodial',
-];
+const PILLS = ['7 Markets', 'Up to 50× Leverage', 'ZK-Verified', 'Non-Custodial']
 
 const STATS = [
   { v: '$183M', l: '24h Volume' },
   { v: '$24.8M', l: 'Open Interest' },
   { v: '7', l: 'Markets' },
   { v: '50×', l: 'Max Leverage' },
-];
+]
 
-const D = 'rgba(255,255,255,0.45)'; // dim text
-const B = 'rgba(255,255,255,0.08)'; // border
+const D = 'rgba(255,255,255,0.45)' // dim text
+const B = 'rgba(255,255,255,0.08)' // border
 
 export default function HomePage() {
   useEffect(() => {
-    const els = document.querySelectorAll('[data-reveal]');
+    const els = document.querySelectorAll('[data-reveal]')
     const io = new IntersectionObserver(
       (entries) => {
         entries.forEach((e) => {
           if (e.isIntersecting) {
-            e.target.classList.add('in');
-            io.unobserve(e.target);
+            e.target.classList.add('in')
+            io.unobserve(e.target)
           }
-        });
+        })
       },
-      { threshold: 0.12 },
-    );
-    els.forEach((el) => io.observe(el));
-    return () => io.disconnect();
-  }, []);
+      { threshold: 0.12 }
+    )
+    els.forEach((el) => io.observe(el))
+    return () => io.disconnect()
+  }, [])
 
   return (
     <div
@@ -240,10 +234,7 @@ export default function HomePage() {
           }}
         >
           {/* Text block */}
-          <div
-            className="hero-stagger"
-            style={{ padding: '40px 48px 0', maxWidth: 800 }}
-          >
+          <div className="hero-stagger" style={{ padding: '40px 48px 0', maxWidth: 800 }}>
             <div
               style={{
                 marginBottom: 18,
@@ -320,13 +311,7 @@ export default function HomePage() {
                       animation: 'mascot-blink 3.5s ease-in-out infinite',
                     }}
                   >
-                    <rect
-                      x="3.1"
-                      y="3.1"
-                      width="0.8"
-                      height="0.8"
-                      fill="#1a1a2e"
-                    />
+                    <rect x="3.1" y="3.1" width="0.8" height="0.8" fill="#1a1a2e" />
                   </g>
                   <g
                     style={{
@@ -334,24 +319,12 @@ export default function HomePage() {
                       animation: 'mascot-blink 3.5s ease-in-out infinite',
                     }}
                   >
-                    <rect
-                      x="5.1"
-                      y="3.1"
-                      width="0.8"
-                      height="0.8"
-                      fill="#1a1a2e"
-                    />
+                    <rect x="5.1" y="3.1" width="0.8" height="0.8" fill="#1a1a2e" />
                   </g>
                   {/* mouth smile */}
                   <rect x="3" y="5" width="3" height="0.5" fill="#4340c4" />
                   <rect x="3" y="5.5" width="0.8" height="0.5" fill="#4340c4" />
-                  <rect
-                    x="5.2"
-                    y="5.5"
-                    width="0.8"
-                    height="0.5"
-                    fill="#4340c4"
-                  />
+                  <rect x="5.2" y="5.5" width="0.8" height="0.5" fill="#4340c4" />
                   {/* body */}
                   <rect x="2" y="6" width="5" height="3" fill="#6366f1" />
                   <rect x="3" y="6.8" width="3" height="1.5" fill="#807dfe" />
@@ -363,13 +336,7 @@ export default function HomePage() {
                   <rect x="2" y="9" width="2" height="2.5" fill="#4340c4" />
                   <rect x="5" y="9" width="2" height="2.5" fill="#4340c4" />
                   {/* feet */}
-                  <rect
-                    x="1.5"
-                    y="11.5"
-                    width="2.5"
-                    height="1"
-                    fill="#2d2a8f"
-                  />
+                  <rect x="1.5" y="11.5" width="2.5" height="1" fill="#2d2a8f" />
                   <rect x="5" y="11.5" width="2.5" height="1" fill="#2d2a8f" />
                 </svg>
               </div>
@@ -408,13 +375,7 @@ export default function HomePage() {
                   }}
                 >
                   <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                    <circle
-                      cx="7"
-                      cy="7"
-                      r="6"
-                      stroke="rgba(255,255,255,0.2)"
-                      strokeWidth="1.25"
-                    />
+                    <circle cx="7" cy="7" r="6" stroke="rgba(255,255,255,0.2)" strokeWidth="1.25" />
                     <path
                       d="M4.5 7l2 2 3-3"
                       stroke="rgba(255,255,255,0.5)"
@@ -514,9 +475,7 @@ export default function HomePage() {
                     padding: '0 9px',
                   }}
                 >
-                  <span
-                    style={{ fontSize: 10, color: 'rgba(255,255,255,0.22)' }}
-                  >
+                  <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.22)' }}>
                     app.tradex.xyz/trade/btc
                   </span>
                 </div>
@@ -544,8 +503,7 @@ export default function HomePage() {
                     left: 0,
                     right: 0,
                     height: '45%',
-                    background:
-                      'linear-gradient(to top, #0c0c14 0%, transparent 100%)',
+                    background: 'linear-gradient(to top, #0c0c14 0%, transparent 100%)',
                     pointerEvents: 'none',
                   }}
                 />
@@ -650,15 +608,20 @@ export default function HomePage() {
                   borderRadius: 12,
                   textDecoration: 'none',
                   color: '#fff',
-                  transition:
-                    'border-color 0.15s, background 0.15s, transform 0.18s',
+                  transition: 'border-color 0.15s, background 0.15s, transform 0.18s',
                 }}
               >
                 {m.logo ? (
                   <img
                     src={m.logo}
                     alt={m.name}
-                    style={{ width: 38, height: 38, borderRadius: '50%', flexShrink: 0, objectFit: 'cover' }}
+                    style={{
+                      width: 38,
+                      height: 38,
+                      borderRadius: '50%',
+                      flexShrink: 0,
+                      objectFit: 'cover',
+                    }}
                   />
                 ) : (
                   <span
@@ -679,12 +642,8 @@ export default function HomePage() {
                   </span>
                 )}
                 <div style={{ minWidth: 0, flex: 1 }}>
-                  <div
-                    style={{ display: 'flex', alignItems: 'center', gap: 7 }}
-                  >
-                    <span style={{ fontSize: 13, fontWeight: 700 }}>
-                      {m.name}
-                    </span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                    <span style={{ fontSize: 13, fontWeight: 700 }}>{m.name}</span>
                     <span
                       style={{
                         fontSize: 9,
@@ -700,9 +659,7 @@ export default function HomePage() {
                       {m.category}
                     </span>
                   </div>
-                  <div style={{ fontSize: 11, color: D, marginTop: 2 }}>
-                    {m.symbol}
-                  </div>
+                  <div style={{ fontSize: 11, color: D, marginTop: 2 }}>{m.symbol}</div>
                 </div>
                 <div style={{ flexShrink: 0, textAlign: 'right' }}>
                   <div
@@ -734,10 +691,7 @@ export default function HomePage() {
         </section>
 
         {/* ── FEATURES ────────────────────────────────────────────────────── */}
-        <section
-          id="features"
-          style={{ background: '#f7f7f9', padding: '80px 48px' }}
-        >
+        <section id="features" style={{ background: '#f7f7f9', padding: '80px 48px' }}>
           <div style={{ maxWidth: 1100, margin: '0 auto' }}>
             <p
               style={{
@@ -806,10 +760,9 @@ export default function HomePage() {
                       margin: 0,
                     }}
                   >
-                    Every position is a Poseidon2 commitment on Stellar. Your
-                    wallet address never appears on-chain. Prove ownership with
-                    a ZK nullifier — open, close, and settle completely
-                    anonymously.
+                    Every position is a Poseidon2 commitment on Stellar. Your wallet address never
+                    appears on-chain. Prove ownership with a ZK nullifier — open, close, and settle
+                    completely anonymously.
                   </p>
                 </div>
                 <div
@@ -824,12 +777,7 @@ export default function HomePage() {
                     alignItems: 'center',
                   }}
                 >
-                  <svg
-                    width="100%"
-                    height="110"
-                    viewBox="0 0 380 110"
-                    fill="none"
-                  >
+                  <svg width="100%" height="110" viewBox="0 0 380 110" fill="none">
                     {/* wallet */}
                     <rect
                       x="0"
@@ -851,22 +799,8 @@ export default function HomePage() {
                       stroke="rgba(0,0,0,0.2)"
                       strokeWidth="1"
                     />
-                    <rect
-                      x="12"
-                      y="31"
-                      width="8"
-                      height="8"
-                      rx="2"
-                      fill="rgba(0,0,0,0.2)"
-                    />
-                    <rect
-                      x="22"
-                      y="31"
-                      width="8"
-                      height="8"
-                      rx="2"
-                      fill="rgba(0,0,0,0.2)"
-                    />
+                    <rect x="12" y="31" width="8" height="8" rx="2" fill="rgba(0,0,0,0.2)" />
+                    <rect x="22" y="31" width="8" height="8" rx="2" fill="rgba(0,0,0,0.2)" />
                     <text
                       x="74"
                       y="51"
@@ -898,10 +832,7 @@ export default function HomePage() {
                       strokeWidth="1.5"
                       strokeDasharray="5 4"
                     />
-                    <polygon
-                      points="144,51 152,55 144,59"
-                      fill="rgba(0,0,0,0.35)"
-                    />
+                    <polygon points="144,51 152,55 144,59" fill="rgba(0,0,0,0.35)" />
                     {/* shield — violet accent */}
                     <path
                       d="M190 12 L224 23 L224 57 C224 71 207 79 190 84 C173 79 156 71 156 57 L156 23 Z"
@@ -937,10 +868,7 @@ export default function HomePage() {
                       strokeWidth="1.5"
                       strokeDasharray="5 4"
                     />
-                    <polygon
-                      points="270,51 278,55 270,59"
-                      fill="rgba(0,0,0,0.35)"
-                    />
+                    <polygon points="270,51 278,55 270,59" fill="rgba(0,0,0,0.35)" />
                     {/* commitment */}
                     <rect
                       x="280"
@@ -1031,10 +959,9 @@ export default function HomePage() {
                       margin: 0,
                     }}
                   >
-                    Deposit collateral anonymously via Merkle-tree notes.
-                    Withdraw to any address. The on-chain link between your
-                    deposit and your trades is cryptographically severed — every
-                    time.
+                    Deposit collateral anonymously via Merkle-tree notes. Withdraw to any address.
+                    The on-chain link between your deposit and your trades is cryptographically
+                    severed — every time.
                   </p>
                 </div>
                 <div
@@ -1049,12 +976,7 @@ export default function HomePage() {
                     alignItems: 'center',
                   }}
                 >
-                  <svg
-                    width="240"
-                    height="120"
-                    viewBox="0 0 240 120"
-                    fill="none"
-                  >
+                  <svg width="240" height="120" viewBox="0 0 240 120" fill="none">
                     <circle
                       cx="40"
                       cy="18"
@@ -1179,10 +1101,7 @@ export default function HomePage() {
                       strokeWidth="1.5"
                       strokeDasharray="3 3"
                     />
-                    <polygon
-                      points="115,94 120,104 125,94"
-                      fill="rgba(0,0,0,0.3)"
-                    />
+                    <polygon points="115,94 120,104 125,94" fill="rgba(0,0,0,0.3)" />
                     <text
                       x="154"
                       y="72"
@@ -1240,10 +1159,9 @@ export default function HomePage() {
                       margin: 0,
                     }}
                   >
-                    Orders are matched inside a Trusted Execution Environment —
-                    a hardware-sealed enclave nobody can tamper with. An
-                    attestation token proves the keeper saw only what it was
-                    supposed to. Verified on-chain with a Groth16 proof.
+                    Orders are matched inside a Trusted Execution Environment — a hardware-sealed
+                    enclave nobody can tamper with. An attestation token proves the keeper saw only
+                    what it was supposed to. Verified on-chain with a Groth16 proof.
                   </p>
                 </div>
                 <div
@@ -1258,12 +1176,7 @@ export default function HomePage() {
                     alignItems: 'center',
                   }}
                 >
-                  <svg
-                    width="300"
-                    height="110"
-                    viewBox="0 0 300 110"
-                    fill="none"
-                  >
+                  <svg width="300" height="110" viewBox="0 0 300 110" fill="none">
                     <rect
                       x="0"
                       y="22"
@@ -1285,13 +1198,7 @@ export default function HomePage() {
                     >
                       Order A
                     </text>
-                    <text
-                      x="36"
-                      y="45"
-                      textAnchor="middle"
-                      fill="rgba(0,0,0,0.28)"
-                      fontSize="7"
-                    >
+                    <text x="36" y="45" textAnchor="middle" fill="rgba(0,0,0,0.28)" fontSize="7">
                       BUY 0.5 BTC
                     </text>
                     <rect
@@ -1315,13 +1222,7 @@ export default function HomePage() {
                     >
                       Order B
                     </text>
-                    <text
-                      x="36"
-                      y="85"
-                      textAnchor="middle"
-                      fill="rgba(0,0,0,0.28)"
-                      fontSize="7"
-                    >
+                    <text x="36" y="85" textAnchor="middle" fill="rgba(0,0,0,0.28)" fontSize="7">
                       SELL 0.5 BTC
                     </text>
                     <line
@@ -1419,10 +1320,7 @@ export default function HomePage() {
                       strokeWidth="1.5"
                       strokeDasharray="4 3"
                     />
-                    <polygon
-                      points="220,52 228,56 220,60"
-                      fill="rgba(0,0,0,0.3)"
-                    />
+                    <polygon points="220,52 228,56 220,60" fill="rgba(0,0,0,0.3)" />
                     <rect
                       x="230"
                       y="36"
@@ -1433,13 +1331,7 @@ export default function HomePage() {
                       stroke="rgba(0,0,0,0.15)"
                       strokeWidth="1.5"
                     />
-                    <text
-                      x="251"
-                      y="60"
-                      textAnchor="middle"
-                      fill="rgba(0,0,0,0.55)"
-                      fontSize="18"
-                    >
+                    <text x="251" y="60" textAnchor="middle" fill="rgba(0,0,0,0.55)" fontSize="18">
                       ✓
                     </text>
                     <text
@@ -1501,39 +1393,31 @@ export default function HomePage() {
                       margin: '0 0 24px',
                     }}
                   >
-                    Trade BTC, ETH, SOL alongside SpaceX, Tesla, Gold and Oil —
-                    all with unified margin. GTC, IOC, FOK, GTD order types.
-                    Keeper-executed TP/SL at oracle prices. Up to 50× leverage
-                    with isolated or cross-margin modes.
+                    Trade BTC, ETH, SOL alongside SpaceX, Tesla, Gold and Oil — all with unified
+                    margin. GTC, IOC, FOK, GTD order types. Keeper-executed TP/SL at oracle prices.
+                    Up to 50× leverage with isolated or cross-margin modes.
                   </p>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7 }}>
-                    {[
-                      'GTC',
-                      'IOC',
-                      'FOK',
-                      'GTD',
-                      'TP / SL',
-                      '50× Lev',
-                      'Cross',
-                      'Isolated',
-                    ].map((t) => (
-                      <span
-                        key={t}
-                        style={{
-                          fontSize: 10,
-                          fontWeight: 700,
-                          letterSpacing: '0.07em',
-                          textTransform: 'uppercase',
-                          padding: '4px 10px',
-                          borderRadius: 6,
-                          background: 'rgba(0,0,0,0.05)',
-                          border: '1px solid rgba(0,0,0,0.1)',
-                          color: '#374151',
-                        }}
-                      >
-                        {t}
-                      </span>
-                    ))}
+                    {['GTC', 'IOC', 'FOK', 'GTD', 'TP / SL', '50× Lev', 'Cross', 'Isolated'].map(
+                      (t) => (
+                        <span
+                          key={t}
+                          style={{
+                            fontSize: 10,
+                            fontWeight: 700,
+                            letterSpacing: '0.07em',
+                            textTransform: 'uppercase',
+                            padding: '4px 10px',
+                            borderRadius: 6,
+                            background: 'rgba(0,0,0,0.05)',
+                            border: '1px solid rgba(0,0,0,0.1)',
+                            color: '#374151',
+                          }}
+                        >
+                          {t}
+                        </span>
+                      )
+                    )}
                   </div>
                 </div>
                 <div
@@ -1563,7 +1447,13 @@ export default function HomePage() {
                         <img
                           src={m.logo}
                           alt={m.name}
-                          style={{ width: 28, height: 28, borderRadius: '50%', objectFit: 'cover', margin: '0 auto 6px' }}
+                          style={{
+                            width: 28,
+                            height: 28,
+                            borderRadius: '50%',
+                            objectFit: 'cover',
+                            margin: '0 auto 6px',
+                          }}
                         />
                       ) : (
                         <div
@@ -1611,10 +1501,7 @@ export default function HomePage() {
         </section>
 
         {/* ── FINAL CTA ───────────────────────────────────────────────────── */}
-        <section
-          data-reveal
-          style={{ padding: '100px 48px', borderTop: `1px solid ${B}` }}
-        >
+        <section data-reveal style={{ padding: '100px 48px', borderTop: `1px solid ${B}` }}>
           <h2
             style={{
               fontSize: 'clamp(28px, 4vw, 52px)',
@@ -1635,8 +1522,7 @@ export default function HomePage() {
               maxWidth: 440,
             }}
           >
-            Connect your Freighter wallet and open your first position in under
-            a minute.
+            Connect your Freighter wallet and open your first position in under a minute.
           </p>
           <Link
             to="/trade/btc"
@@ -1690,17 +1576,13 @@ export default function HomePage() {
                 objectFit: 'cover',
               }}
             />
-            <span style={{ fontSize: 13, fontWeight: 600, color: D }}>
-              tradex
-            </span>
+            <span style={{ fontSize: 13, fontWeight: 600, color: D }}>tradex</span>
           </div>
-          <p
-            style={{ fontSize: 12, color: 'rgba(255,255,255,0.22)', margin: 0 }}
-          >
+          <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.22)', margin: 0 }}>
             © 2026 Tradex. Testnet only — not financial advice.
           </p>
         </footer>
       </div>
     </div>
-  );
+  )
 }

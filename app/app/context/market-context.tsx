@@ -1,14 +1,6 @@
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { tee, type OrderBookLevel } from '../lib/tee-client'
-import { fetchCandles, connectPythWs, type Candle as PythCandle } from '../lib/pyth'
+import { fetchCandles, connectPythWs } from '../lib/pyth'
 
 export type Side = 'long' | 'short'
 
@@ -27,7 +19,7 @@ export interface MarketState {
   index: number
   changePct: number
   funding: number
-  openInterest: number | null   // null = unknown / not indexed yet
+  openInterest: number | null // null = unknown / not indexed yet
   volume24h: number | null
   candles: Candle[]
   candlesLoading: boolean
@@ -37,7 +29,7 @@ export interface MarketState {
 
 interface MarketContextValue extends MarketState {
   setSymbol: (symbol: string) => void
-  allPrices: Map<string, number>   // pythId → USD price for all markets
+  allPrices: Map<string, number> // pythId → USD price for all markets
 }
 
 const MarketContext = createContext<MarketContextValue | undefined>(undefined)
@@ -49,55 +41,83 @@ export interface MarketDefinition {
   basePrice: number
   icon: string
   color: string
-  logo?: string   // path to SVG/PNG in /public/logos/
+  logo?: string // path to SVG/PNG in /public/logos/
   assetId: number
   pythId: string
 }
 
 export const MARKET_CATALOG: MarketDefinition[] = [
   {
-    symbol: 'BTC-PERP', name: 'Bitcoin', category: 'Crypto',
-    basePrice: 61628.2, icon: '₿', color: '#f7931a',
+    symbol: 'BTC-PERP',
+    name: 'Bitcoin',
+    category: 'Crypto',
+    basePrice: 61628.2,
+    icon: '₿',
+    color: '#f7931a',
     logo: '/logos/XTVCBTC--big.svg',
     assetId: 0,
     pythId: 'e62df6c8b4a85fe1a67db44dc12de5db330f7ac66b72dc658afedf0f4a415b43',
   },
   {
-    symbol: 'XRP-PERP', name: 'XRP', category: 'Crypto',
-    basePrice: 0.52, icon: 'XRP', color: '#346aa9',
+    symbol: 'XRP-PERP',
+    name: 'XRP',
+    category: 'Crypto',
+    basePrice: 0.52,
+    icon: 'XRP',
+    color: '#346aa9',
     assetId: 1,
     pythId: 'ec5d399846a9209f3fe5881d70aae9268c94339ff9a0ae1c6aebcb7f40e78acd',
   },
   {
-    symbol: 'XLM-PERP', name: 'Stellar', category: 'Crypto',
-    basePrice: 0.11, icon: 'XLM', color: '#7b1fa2',
+    symbol: 'XLM-PERP',
+    name: 'Stellar',
+    category: 'Crypto',
+    basePrice: 0.11,
+    icon: 'XLM',
+    color: '#7b1fa2',
     assetId: 2,
     pythId: 'b7a8eba68a997cd0210c2e1e4ee811ad2d174b3611c22d9ebf16f4cb7e9ba850',
   },
   {
-    symbol: 'SPACEX-PERP', name: 'SpaceX', category: 'RWA',
-    basePrice: 350.0, icon: 'SpX', color: '#111827',
+    symbol: 'SPACEX-PERP',
+    name: 'SpaceX',
+    category: 'RWA',
+    basePrice: 350.0,
+    icon: 'SpX',
+    color: '#111827',
     logo: '/logos/spacex--big.svg',
     assetId: 3,
     pythId: '',
   },
   {
-    symbol: 'TSLA-PERP', name: 'Tesla', category: 'RWA',
-    basePrice: 393.4, icon: 'TSLA', color: '#e82127',
+    symbol: 'TSLA-PERP',
+    name: 'Tesla',
+    category: 'RWA',
+    basePrice: 393.4,
+    icon: 'TSLA',
+    color: '#e82127',
     logo: '/logos/XTVCTESLAI--big.svg',
     assetId: 4,
     pythId: '16dad506d7db8da01c87581c87ca897a012a153557d4d578c3b9c9e1bc0632f1',
   },
   {
-    symbol: 'OIL-PERP', name: 'Crude Oil', category: 'RWA',
-    basePrice: 70.0, icon: 'OIL', color: '#0f766e',
+    symbol: 'OIL-PERP',
+    name: 'Crude Oil',
+    category: 'RWA',
+    basePrice: 70.0,
+    icon: 'OIL',
+    color: '#0f766e',
     logo: '/logos/crude-oil--big.svg',
     assetId: 5,
     pythId: 'fe650f0367d4a7ef9815a593ea15d36593f0643aaaf0149bb04be67ab851decd',
   },
   {
-    symbol: 'GOLD-PERP', name: 'Gold', category: 'RWA',
-    basePrice: 4179.5, icon: 'Au', color: '#d4a017',
+    symbol: 'GOLD-PERP',
+    name: 'Gold',
+    category: 'RWA',
+    basePrice: 4179.5,
+    icon: 'Au',
+    color: '#d4a017',
     logo: '/logos/gold--big.svg',
     assetId: 6,
     pythId: '765d2ba906dbc32ca17cc11f5310a89e9ee1f6420508c63861f2f8ba4ee34bb2',
@@ -147,7 +167,7 @@ function makeSeededCandles(base: number): Candle[] {
       time: now - i * 60,
       open,
       high: Math.max(open, close) + wick,
-      low:  Math.min(open, close) - wick * (0.75 + wickNoise * 0.3),
+      low: Math.min(open, close) - wick * (0.75 + wickNoise * 0.3),
       close,
       volume: 45 + Math.round(wickNoise * 64) + Math.round((body / base) * 26000),
     })
@@ -179,16 +199,16 @@ export function MarketProvider({
   const currentMarket = MARKET_CATALOG.find((m) => m.symbol === symbol)
 
   // ── Candle state ─────────────────────────────────────────────────
-  const [candles, setCandles]               = useState<Candle[]>([])
+  const [candles, setCandles] = useState<Candle[]>([])
   const [candlesLoading, setCandlesLoading] = useState(true)
 
   // Current open 1-min candle built from WebSocket ticks (ref = no re-render per tick)
   const liveCandle = useRef<Candle | null>(null)
 
   // ── Live price state ─────────────────────────────────────────────
-  const [livePrice, setLivePrice]   = useState<number | null>(null)
+  const [livePrice, setLivePrice] = useState<number | null>(null)
   const allPricesRef = useRef<Map<string, number>>(new Map())
-  const [allPrices, setAllPrices]   = useState<Map<string, number>>(new Map())
+  const [allPrices, setAllPrices] = useState<Map<string, number>>(new Map())
 
   // ── Orderbook state ──────────────────────────────────────────────
   const [bids, setBids] = useState<OrderBookLevel[]>([])
@@ -215,8 +235,10 @@ export function MarketProvider({
       setCandlesLoading(false)
     })
 
-    return () => { cancelled = true }
-  }, [symbol]) // eslint-disable-line react-hooks/exhaustive-deps
+    return () => {
+      cancelled = true
+    }
+  }, [symbol])
 
   // ── Pyth WebSocket — all markets ─────────────────────────────────
   useEffect(() => {
@@ -250,15 +272,17 @@ export function MarketProvider({
         }
         liveCandle.current = {
           time: minuteStart,
-          open: tick.price, high: tick.price,
-          low:  tick.price, close: tick.price,
+          open: tick.price,
+          high: tick.price,
+          low: tick.price,
+          close: tick.price,
           volume: 0,
         }
       } else {
         liveCandle.current = {
           ...cur,
-          high:  Math.max(cur.high,  tick.price),
-          low:   Math.min(cur.low,   tick.price),
+          high: Math.max(cur.high, tick.price),
+          low: Math.min(cur.low, tick.price),
           close: tick.price,
         }
       }
@@ -284,7 +308,9 @@ export function MarketProvider({
       const resp = await tee.getMarket(currentMarket.assetId)
       if (resp.bids?.length) setBids(resp.bids)
       if (resp.asks?.length) setAsks(resp.asks)
-    } catch { /* TEE offline — keep last known depth */ }
+    } catch {
+      /* TEE offline — keep last known depth */
+    }
   }, [currentMarket])
 
   useEffect(() => {
@@ -297,19 +323,20 @@ export function MarketProvider({
 
   // ── Derived market state ──────────────────────────────────────────
   const value = useMemo<MarketContextValue>(() => {
-    const first = candles[0]?.open  ?? currentMarket?.basePrice ?? 1
-    const last  = candles[candles.length - 1]?.close ?? first
+    const first = candles[0]?.open ?? currentMarket?.basePrice ?? 1
+    const last = candles[candles.length - 1]?.close ?? first
 
-    const index = livePrice ?? last   // Pyth oracle = index price
-    const mark  = index               // mark = oracle (no TWAP divergence yet)
+    const index = livePrice ?? last // Pyth oracle = index price
+    const mark = index // mark = oracle (no TWAP divergence yet)
 
     // Open interest estimated from CLOB book depth: Σ(price × size) / PRICE_SCALE²
     // price is in 7-decimal scale (1e7), size is in contract units (also 1e7 based)
     const PRICE_SCALE = 1e7
     const clobLevels = [...bids, ...asks]
-    const openInterest = clobLevels.length > 0
-      ? clobLevels.reduce((acc, l) => acc + (l.price / PRICE_SCALE) * (l.size / PRICE_SCALE), 0)
-      : null
+    const openInterest =
+      clobLevels.length > 0
+        ? clobLevels.reduce((acc, l) => acc + (l.price / PRICE_SCALE) * (l.size / PRICE_SCALE), 0)
+        : null
 
     return {
       symbol,

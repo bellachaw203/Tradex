@@ -7,7 +7,7 @@ const handleRequest = async (
   responseStatusCode: number,
   responseHeaders: Headers,
   routerContext: EntryContext,
-  _loadContext: AppLoadContext,
+  _loadContext: AppLoadContext
 ) => {
   const body = await renderToReadableStream(
     <ServerRouter context={routerContext} url={request.url} />,
@@ -16,7 +16,7 @@ const handleRequest = async (
         responseStatusCode = 500
         console.error(error)
       },
-    },
+    }
   )
 
   responseHeaders.set('Content-Type', 'text/html')

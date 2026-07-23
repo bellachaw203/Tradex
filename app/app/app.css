@@ -1,4 +1,4 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 
 @font-face {
   font-family: 'Berkeley Mono';
@@ -49,7 +49,7 @@
   --radius-pill: 9999px;
 }
 
-:root[data-theme="light"] {
+:root[data-theme='light'] {
   --color-page: #f3f5f9;
   --color-surface-primary: #ffffff;
   --color-surface-card: #f7f8fc;
@@ -63,13 +63,13 @@
   --color-brand-violet: #807dfe;
   --color-accent-light: #a5a3ff;
   --color-warning: #b57614;
-  --color-border-subtle: rgba(17, 24, 39, 0.10);
+  --color-border-subtle: rgba(17, 24, 39, 0.1);
   --color-border-default: #d7dce8;
   --skeleton-base: #eef1f7;
   --skeleton-highlight: #f8fafc;
 }
 
-:root[data-theme="dark"] {
+:root[data-theme='dark'] {
   --color-page: #000000;
   --color-surface-primary: #0a0a12;
   --color-surface-card: #0d0f1a;
@@ -85,7 +85,7 @@
   --skeleton-highlight: #15172a;
 }
 
-:root[data-theme="nord"] {
+:root[data-theme='nord'] {
   --color-page: #e5e9f0;
   --color-surface-primary: #eceff4;
   --color-surface-card: #d8dee9;
@@ -105,7 +105,7 @@
   --skeleton-highlight: #eceff4;
 }
 
-:root[data-theme="solarized"] {
+:root[data-theme='solarized'] {
   --color-page: #eee8d5;
   --color-surface-primary: #fdf6e3;
   --color-surface-card: #eee8d5;
@@ -125,7 +125,7 @@
   --skeleton-highlight: #fdf6e3;
 }
 
-:root[data-theme="tokyo"] {
+:root[data-theme='tokyo'] {
   --color-page: #16161e;
   --color-surface-primary: #1a1b26;
   --color-surface-card: #24283b;
@@ -139,13 +139,13 @@
   --color-brand-violet: #bb9af7;
   --color-accent-light: #7dcfff;
   --color-warning: #e0af68;
-  --color-border-subtle: rgba(192, 202, 245, 0.10);
+  --color-border-subtle: rgba(192, 202, 245, 0.1);
   --color-border-default: #343b58;
   --skeleton-base: #24283b;
   --skeleton-highlight: #2f3549;
 }
 
-:root[data-theme="dracula"] {
+:root[data-theme='dracula'] {
   --color-page: #191a21;
   --color-surface-primary: #282a36;
   --color-surface-card: #343746;
@@ -159,13 +159,13 @@
   --color-brand-violet: #bd93f9;
   --color-accent-light: #8be9fd;
   --color-warning: #f1fa8c;
-  --color-border-subtle: rgba(248, 248, 242, 0.10);
+  --color-border-subtle: rgba(248, 248, 242, 0.1);
   --color-border-default: #44475a;
   --skeleton-base: #282a36;
   --skeleton-highlight: #3a3d4d;
 }
 
-:root[data-theme="matrix"] {
+:root[data-theme='matrix'] {
   --color-page: #020806;
   --color-surface-primary: #07110d;
   --color-surface-card: #0b1b13;
@@ -185,7 +185,7 @@
   --skeleton-highlight: #123322;
 }
 
-:root[data-theme="sepia"] {
+:root[data-theme='sepia'] {
   --color-page: #eadcc0;
   --color-surface-primary: #fff4dc;
   --color-surface-card: #f4e5c9;
@@ -205,7 +205,7 @@
   --skeleton-highlight: #fff4dc;
 }
 
-:root[data-theme="slate"] {
+:root[data-theme='slate'] {
   --color-page: #101418;
   --color-surface-primary: #171d23;
   --color-surface-card: #202832;
@@ -225,7 +225,7 @@
   --skeleton-highlight: #2b3642;
 }
 
-:root[data-theme="contrast"] {
+:root[data-theme='contrast'] {
   --color-page: #ffffff;
   --color-surface-primary: #ffffff;
   --color-surface-card: #f1f5f9;
@@ -272,9 +272,9 @@ body {
 button,
 a,
 select,
-input[type="button"],
-input[type="submit"],
-[role="button"],
+input[type='button'],
+input[type='submit'],
+[role='button'],
 .cursor-pointer {
   cursor: pointer !important;
 }
@@ -293,8 +293,12 @@ input[type="submit"],
 }
 
 @keyframes shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
 }
 
 .skeleton {
@@ -329,8 +333,12 @@ input[type="submit"],
   cursor: ew-resize;
 }
 
-.react-grid-item > .react-resizable-handle-e { right: -2px; }
-.react-grid-item > .react-resizable-handle-w { left: -2px; }
+.react-grid-item > .react-resizable-handle-e {
+  right: -2px;
+}
+.react-grid-item > .react-resizable-handle-w {
+  left: -2px;
+}
 
 .react-grid-item > .react-resizable-handle-n,
 .react-grid-item > .react-resizable-handle-s {
@@ -342,8 +350,12 @@ input[type="submit"],
   cursor: ns-resize;
 }
 
-.react-grid-item > .react-resizable-handle-n { top: -2px; }
-.react-grid-item > .react-resizable-handle-s { bottom: -2px; }
+.react-grid-item > .react-resizable-handle-n {
+  top: -2px;
+}
+.react-grid-item > .react-resizable-handle-s {
+  bottom: -2px;
+}
 
 .react-grid-item > .react-resizable-handle-se,
 .react-grid-item > .react-resizable-handle-sw,
@@ -355,13 +367,29 @@ input[type="submit"],
   z-index: 31;
 }
 
-.react-grid-item > .react-resizable-handle-se { bottom: 0; right: 0; cursor: se-resize; }
-.react-grid-item > .react-resizable-handle-sw { bottom: 0; left: 0; cursor: sw-resize; }
-.react-grid-item > .react-resizable-handle-ne { top: 0; right: 0; cursor: ne-resize; }
-.react-grid-item > .react-resizable-handle-nw { top: 0; left: 0; cursor: nw-resize; }
+.react-grid-item > .react-resizable-handle-se {
+  bottom: 0;
+  right: 0;
+  cursor: se-resize;
+}
+.react-grid-item > .react-resizable-handle-sw {
+  bottom: 0;
+  left: 0;
+  cursor: sw-resize;
+}
+.react-grid-item > .react-resizable-handle-ne {
+  top: 0;
+  right: 0;
+  cursor: ne-resize;
+}
+.react-grid-item > .react-resizable-handle-nw {
+  top: 0;
+  left: 0;
+  cursor: nw-resize;
+}
 
 .react-grid-item > .react-resizable-handle-se::before {
-  content: "";
+  content: '';
   position: absolute;
   right: 5px;
   bottom: 5px;
