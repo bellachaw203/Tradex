@@ -15,3 +15,12 @@ exclude = [
   "tiny",
   "tools/e2e",
 ]
+
+# Single source of truth for the protocol version. Every member inherits it
+# with `version.workspace = true`, so a release is one line to change — see
+# scripts/ci/bump-version.sh, which rewrites exactly this field.
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "Apache-2.0"
+repository = "https://github.com/tradex/cerida"
