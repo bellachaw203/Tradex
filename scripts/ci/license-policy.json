@@ -1,0 +1,68 @@
+{
+  "$comment": [
+    "Licence policy for npm dependencies shipped in the frontend bundle.",
+    "This repo is distributed under Apache-2.0 (see /LICENSE), so dependency",
+    "licences must be compatible with that.",
+    "Enforced by scripts/ci/check-licenses.mjs; see docs/ci-cd/SECURITY.md."
+  ],
+
+  "allowed": [
+    "0BSD",
+    "Apache-2.0",
+    "Artistic-2.0",
+    "BlueOak-1.0.0",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "CC-BY-3.0",
+    "CC-BY-4.0",
+    "CC0-1.0",
+    "ISC",
+    "MIT",
+    "MIT-0",
+    "MPL-2.0",
+    "Python-2.0",
+    "Unlicense",
+    "WTFPL",
+    "Zlib",
+    "BSD-1-Clause",
+    "Unicode-3.0",
+    "Unicode-DFS-2016"
+  ],
+
+  "denied": [
+    "AGPL-1.0",
+    "AGPL-3.0",
+    "AGPL-3.0-only",
+    "AGPL-3.0-or-later",
+    "GPL-2.0",
+    "GPL-2.0-only",
+    "GPL-3.0",
+    "GPL-3.0-only",
+    "GPL-3.0-or-later",
+    "SSPL-1.0",
+    "BUSL-1.1",
+    "Commons-Clause",
+    "CC-BY-NC-4.0"
+  ],
+
+  "exceptions": [
+    {
+      "package": "@lobstrco/signer-extension-api",
+      "license": "GPL-3.0",
+      "reason": "Transitive dependency of @creit.tech/stellar-wallets-kit (wallet connector). GPL-3.0 is not compatible with Apache-2.0 distribution of a linked bundle. NEEDS LEGAL REVIEW: either confirm the LOBSTR connector is tree-shaken out of the production bundle, obtain a licence exception, or drop the wallet kit's LOBSTR module.",
+      "review_by": "2026-10-01",
+      "tracked_by": "TODO: open an issue and reference it here"
+    },
+    {
+      "package": "ua-parser-js",
+      "license": "AGPL-3.0-or-later",
+      "reason": "Transitive via @creit.tech/stellar-wallets-kit → @trezor/connect → @trezor/env-utils. ua-parser-js 2.x is dual-licensed AGPL-3.0 / commercial. NEEDS LEGAL REVIEW: pin the dependency back to 1.x (MIT) via an npm override, purchase the commercial licence, or drop Trezor support.",
+      "review_by": "2026-10-01",
+      "tracked_by": "TODO: open an issue and reference it here"
+    }
+  ],
+
+  "reviewed": {
+    "$comment": "Packages whose metadata is non-SPDX but has been read and confirmed acceptable. Key is the package name, value is the justification."
+  }
+}
