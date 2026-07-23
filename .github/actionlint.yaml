@@ -1,0 +1,28 @@
+# actionlint configuration.
+#
+# Run locally with:
+#   actionlint -shellcheck "$(command -v shellcheck)"
+#
+# CI runs it in the `hygiene` job, so a broken workflow is caught by the
+# pipeline rather than by pushing and watching it fail.
+
+self-hosted-runner:
+  labels: []
+
+# Two shellcheck rules are suppressed globally, both deliberately:
+#
+#   SC2016 — "expressions don't expand in single quotes". Several steps embed a
+#            Node script in single quotes precisely so the shell leaves its
+#            `${...}` template literals alone. Expanding them is the bug this
+#            rule would introduce.
+#
+#   SC2129 — style-only suggestion to group redirects into a single block.
+#            The step summaries here are written from inside conditionals where
+#            grouping would hurt readability rather than help it.
+#
+# Everything else shellcheck reports is treated as a real finding.
+paths:
+  .github/workflows/**.yml:
+    ignore:
+      - 'shellcheck reported issue in this script: SC2016'
+      - 'shellcheck reported issue in this script: SC2129'

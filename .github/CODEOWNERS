@@ -1,0 +1,48 @@
+# Code ownership — who must review what.
+#
+# GitHub requests review from the matching owner automatically. To make that
+# review *mandatory*, enable "Require review from Code Owners" in the branch
+# protection rule for main (see docs/ci-cd/README.md).
+#
+# ⚠️  The @tradex/* teams below are placeholders. Replace them with real GitHub
+#     usernames or teams before enabling code-owner review, or every PR will
+#     block on a team that does not exist.
+
+# Default owner for anything not matched below.
+*                           @tradex/maintainers
+
+# ── Consensus-critical code ──────────────────────────────────────────────────
+# These directories decide how collateral moves and how proofs are accepted.
+# A mistake here is not revertable once deployed.
+/contracts/                 @tradex/contracts
+/crates/                    @tradex/contracts
+/circuits/                  @tradex/cryptography
+/tools/rust-circuits/       @tradex/cryptography
+
+# The verifying keys are compiled into the contracts — changing one silently
+# changes which proofs a deployed contract will accept.
+/circuits/keys/             @tradex/cryptography @tradex/contracts
+
+# ── Off-chain services ───────────────────────────────────────────────────────
+/keepers/                   @tradex/backend
+/tools/tee-match/           @tradex/backend @tradex/security
+/infra/                     @tradex/infrastructure
+/design/gcp-tee-hardening.md @tradex/security
+
+# ── Frontend ─────────────────────────────────────────────────────────────────
+/app/                       @tradex/frontend
+
+# ── Pipeline and release machinery ───────────────────────────────────────────
+# Workflow changes can weaken every other gate in this file, so they get their
+# own reviewers.
+/.github/                   @tradex/infrastructure
+/scripts/                   @tradex/infrastructure
+/deploy/                    @tradex/infrastructure @tradex/security
+/.github/workflows/cd.yml   @tradex/infrastructure @tradex/security
+/.github/workflows/release.yml @tradex/infrastructure
+
+# ── Security-sensitive configuration ─────────────────────────────────────────
+/.gitleaks.toml             @tradex/security
+/scripts/ci/scan-secrets.sh @tradex/security
+/scripts/ci/license-policy.json @tradex/security
+/.githooks/                 @tradex/security
