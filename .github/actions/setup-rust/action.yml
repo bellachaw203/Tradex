@@ -1,0 +1,69 @@
+name: Setup Rust
+description: >-
+  Installs the toolchain pinned in rust-toolchain.toml (including the
+  wasm32v1-none target and clippy/rustfmt), restores the cargo cache, and
+  optionally installs binaryen for wasm-opt.
+
+inputs:
+  cache-key:
+    description: Extra cache discriminator, so jobs with different build flags do not thrash one shared cache.
+    required: false
+    default: default
+  cache-save:
+    description: Whether this job may write to the shared cargo cache. Keep "true" for exactly one job per workflow.
+    required: false
+    default: 'false'
+  binaryen:
+    description: Install binaryen so `wasm-opt` is on PATH.
+    required: false
+    default: 'false'
+  workspaces:
+    description: Newline-separated `path -> target-dir` entries for Swatinem/rust-cache.
+    required: false
+    default: '. -> target'
+
+runs:
+  using: composite
+  steps:
+    # rustup reads rust-toolchain.toml, so the channel, components and targets
+    # are defined in exactly one place for local dev and CI alike.
+    - name: Install pinned Rust toolchain
+      shell: bash
+      run: |
+        rustup show active-toolchain || rustup toolchain install
+        rustup show
+        # Deliberately no global RUSTFLAGS=-D warnings: it applies to third-party
+        # crates too and changes the fingerprint of every cached artifact.
+        # Warning denial belongs on the clippy invocation (`-- -D warnings`),
+        # where it only covers this workspace.
+        echo "CARGO_TERM_COLOR=always" >> "$GITHUB_ENV"
+        echo "CARGO_INCREMENTAL=0" >> "$GITHUB_ENV"
+        echo "CARGO_NET_RETRY=3" >> "$GITHUB_ENV"
+
+    - name: Cache cargo registry and target dir
+      uses: Swatinem/rust-cache@v2
+      with:
+        key: ${{ inputs.cache-key }}
+        workspaces: ${{ inputs.workspaces }}
+        save-if: ${{ inputs.cache-save == 'true' }}
+
+    - name: Install binaryen (wasm-opt)
+      if: inputs.binaryen == 'true'
+      shell: bash
+      run: |
+        if command -v wasm-opt >/dev/null 2>&1; then
+          echo "wasm-opt already present: $(wasm-opt --version)"
+          exit 0
+        fi
+        sudo apt-get update -qq
+        sudo apt-get install -y --no-install-recommends binaryen
+        wasm-opt --version
+
+    - name: Report toolchain
+      shell: bash
+      run: |
+        echo "### Rust toolchain" >> "$GITHUB_STEP_SUMMARY"
+        echo '```' >> "$GITHUB_STEP_SUMMARY"
+        rustc --version >> "$GITHUB_STEP_SUMMARY"
+        cargo --version >> "$GITHUB_STEP_SUMMARY"
+        echo '```' >> "$GITHUB_STEP_SUMMARY"
