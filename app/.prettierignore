@@ -1,0 +1,9 @@
+build/
+dist/
+coverage/
+node_modules/
+.react-router/
+public/
+package-lock.json
+bun.lock
+next-env.d.ts
