@@ -1,0 +1,70 @@
+# Gitleaks configuration for Tradex.
+#
+# Extends the upstream default rule set and adds the credential shapes that
+# matter for a Stellar protocol: account secret seeds and the TEE/keeper
+# service credentials.
+#
+# The lightweight in-repo equivalent is scripts/ci/scan-secrets.sh, which runs
+# in the pre-commit hook; this config is what CI uses for the full history scan.
+
+title = "Tradex gitleaks config"
+
+[extend]
+useDefault = true
+
+# ── Project-specific rules ───────────────────────────────────────────────────
+
+[[rules]]
+id = "stellar-secret-seed"
+description = "Stellar account secret seed (S...) — grants full control of the account"
+# Ed25519 secret seeds are strkey-encoded: 'S' followed by 55 base32 characters.
+regex = '''\bS[A-Z2-7]{55}\b'''
+keywords = ["S"]
+entropy = 3.5
+
+[[rules]]
+id = "stellar-muxed-secret"
+description = "Stellar pre-auth / hash-x signer secret"
+regex = '''\b[TX][A-Z2-7]{55}\b'''
+keywords = ["T", "X"]
+entropy = 3.5
+
+[[rules]]
+id = "vite-inlined-secret"
+description = "A populated VITE_*_SECRET — Vite inlines these into the public client bundle"
+regex = '''VITE_[A-Z0-9_]*(SECRET|PRIVATE|KEY)[A-Z0-9_]*\s*=\s*["']?[A-Za-z0-9+/=_-]{16,}'''
+keywords = ["VITE_"]
+
+# ── Allowlist ────────────────────────────────────────────────────────────────
+
+[allowlist]
+description = "Paths and values that are public by design"
+
+paths = [
+  # Groth16 proving/verifying keys are public parameters — publishing them is
+  # the point of a trusted setup, and their hex payloads trip entropy rules.
+  '''^circuits/keys/''',
+  '''\.(zkey|r1cs|ptau|sym|wtns)$''',
+  '''^tiny/circuits/''',
+
+  # Lockfiles are full of integrity hashes that look like high-entropy secrets.
+  '''(^|/)package-lock\.json$''',
+  '''(^|/)bun\.lock$''',
+  '''(^|/)Cargo\.lock$''',
+
+  # Binary assets.
+  '''\.(png|jpg|jpeg|gif|ico|svg|woff2?|ttf|wasm|bin)$''',
+
+  # The scanners themselves contain the patterns they search for.
+  '''^scripts/ci/scan-secrets\.sh$''',
+  '''^\.gitleaks\.toml$''',
+]
+
+regexes = [
+  # Public network identifiers, not credentials.
+  '''Test SDF Network ; September 2015''',
+  '''Public Global Stellar Network ; September 2015''',
+]
+
+# Reviewed, intentional matches carry this marker on the same line.
+stopwords = ["allowlist-secret-scan"]
