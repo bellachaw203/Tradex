@@ -1,0 +1,30 @@
+{
+  "$comment": [
+    "Per-contract wasm size budgets, in bytes, enforced by scripts/ci/validate-wasm.sh.",
+    "",
+    "These are regression guards, not the network limit. The real ceiling is the",
+    "target network's `contractMaxSizeBytes` ledger setting — check it with",
+    "`stellar network settings --network <net>` before raising a budget, because",
+    "an over-limit contract fails at upload time, not at build time.",
+    "",
+    "Budgets are measured on the *optimized* artifact — the release build",
+    "after `wasm-opt -Oz`, which is what actually gets deployed. wasm-opt",
+    "roughly halves these contracts, so validating the raw cargo output would",
+    "measure something that never ships. reusable-contracts.yml therefore runs",
+    "wasm-opt before validate-wasm.sh.",
+    "",
+    "Budgets were set from the measured optimized build plus ~15% headroom.",
+    "Raising one is a deliberate act: do it in the same PR that grows the",
+    "contract, and say why in the commit message."
+  ],
+
+  "budgets": {
+    "orderbook": 20500,
+    "perp_engine": 84500,
+    "shielded_pool": 18000,
+    "collateral": 17000,
+    "verifier_groth16": 6500
+  },
+
+  "warn_at_percent": 90
+}
