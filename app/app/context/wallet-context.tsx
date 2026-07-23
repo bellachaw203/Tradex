@@ -1,5 +1,10 @@
 import { createContext, useCallback, useContext, useEffect, useState } from 'react'
-import { StellarWalletsKit, KitEventType, Networks, type SwkAppTheme } from '@creit.tech/stellar-wallets-kit'
+import {
+  StellarWalletsKit,
+  KitEventType,
+  Networks,
+  type SwkAppTheme,
+} from '@creit.tech/stellar-wallets-kit'
 import { FreighterModule } from '@creit.tech/stellar-wallets-kit/modules/freighter'
 import { xBullModule } from '@creit.tech/stellar-wallets-kit/modules/xbull'
 import { AlbedoModule } from '@creit.tech/stellar-wallets-kit/modules/albedo'
@@ -10,8 +15,7 @@ import { toast } from '../components/toast/toast-context'
 import { useTheme } from './theme-context'
 import { getUsdcBalance } from '../lib/contracts'
 
-const EXPECTED_PASSPHRASE: string =
-  import.meta.env.VITE_NETWORK_PASSPHRASE ?? Networks.TESTNET
+const EXPECTED_PASSPHRASE: string = import.meta.env.VITE_NETWORK_PASSPHRASE ?? Networks.TESTNET
 
 const resolvedNetwork = (Object.values(Networks) as string[]).includes(EXPECTED_PASSPHRASE)
   ? (EXPECTED_PASSPHRASE as Networks)
@@ -168,11 +172,17 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       setStatus('connected')
 
       if (networkPassphrase !== EXPECTED_PASSPHRASE) {
-        toast.warning('Wrong network', 'Your wallet is on a different network. Switch to Testnet to trade.', {
-          duration: 7000,
-        })
+        toast.warning(
+          'Wrong network',
+          'Your wallet is on a different network. Switch to Testnet to trade.',
+          {
+            duration: 7000,
+          }
+        )
       } else {
-        toast.success('Wallet connected', `${address.slice(0, 4)}…${address.slice(-4)}`, { duration: 3000 })
+        toast.success('Wallet connected', `${address.slice(0, 4)}…${address.slice(-4)}`, {
+          duration: 3000,
+        })
       }
     } catch (e) {
       setStatus('disconnected')
@@ -204,10 +214,10 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
         })
         return result.signedTxXdr
       } catch (e) {
-        throw new Error(explainKitError(e))
+        throw new Error(explainKitError(e), { cause: e })
       }
     },
-    [publicKey, wrongNetwork],
+    [publicKey, wrongNetwork]
   )
 
   return (
