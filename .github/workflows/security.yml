@@ -1,0 +1,252 @@
+
+# Security scanning — dependency vulnerabilities, secrets, licences and SAST.
+#
+# Runs on every PR and push to main (so a vulnerability cannot be merged), and
+# on a weekly schedule (so a newly-published advisory against an unchanged
+# dependency is still caught).
+#
+# CodeQL lives in its own workflow (codeql.yml) because it has a different
+# permission model and runtime profile.
+name: Security
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  schedule:
+    # Mondays 04:17 UTC — off the hour, to avoid the scheduler stampede.
+    - cron: '17 4 * * 1'
+  workflow_dispatch:
+
+concurrency:
+  group: security-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  # ── Secrets ──────────────────────────────────────────────────────────────
+  secrets:
+    name: Secret scanning
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          # Gitleaks needs history to scan past commits, not just the tree.
+          fetch-depth: 0
+
+      - name: In-repo scanner (working tree)
+        run: ./scripts/ci/scan-secrets.sh
+
+      - name: Install gitleaks
+        run: ./scripts/ci/install-tool.sh gitleaks
+
+      # Scans commit history as well as the tree: a secret that was committed
+      # and then deleted is still a leaked secret.
+      - name: Gitleaks (full history)
+        run: |
+          gitleaks detect \
+            --source . \
+            --config .gitleaks.toml \
+            --redact \
+            --report-format sarif \
+            --report-path gitleaks.sarif \
+            --exit-code 1
+
+      - name: Upload gitleaks report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gitleaks-report
+          path: gitleaks.sarif
+          if-no-files-found: ignore
+          retention-days: 30
+
+  # ── Rust dependency advisories ───────────────────────────────────────────
+  cargo-audit:
+    name: Rust advisories
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: ./.github/actions/setup-rust
+        with:
+          cache-key: audit
+
+      - name: Install cargo-audit
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-audit
+
+      # Every lockfile in the repo, not just the workspace root: the standalone
+      # tool crates ship their own dependency trees.
+      - name: Audit all lockfiles
+        run: |
+          status=0
+          for lock in Cargo.lock tools/e2e/Cargo.lock keepers/Cargo.lock; do
+            [ -f "$lock" ] || continue
+            echo "::group::cargo audit $lock"
+            cargo audit --file "$lock" --deny warnings || status=1
+            echo "::endgroup::"
+          done
+          exit $status
+
+  # ── npm dependency advisories ────────────────────────────────────────────
+  npm-audit:
+    name: npm advisories
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: ./.github/actions/setup-node
+
+      # High and critical advisories block; moderate and low are reported.
+      # A wallet-connecting dApp cannot ship a known high-severity flaw, but
+      # failing on every transitive `low` would make the gate noise.
+      - name: npm audit (high and critical block)
+        run: npm audit --audit-level=high
+
+      - name: npm audit (full report)
+        if: always()
+        run: |
+          npm audit --json > npm-audit.json || true
+          node -e '
+            const r = require("./npm-audit.json")
+            const v = r.metadata?.vulnerabilities ?? {}
+            const rows = Object.entries(v).map(([k, n]) => `| ${k} | ${n} |`).join("\n")
+            require("fs").appendFileSync(process.env.GITHUB_STEP_SUMMARY,
+              `### npm advisories\n\n| Severity | Count |\n| --- | ---: |\n${rows}\n`)
+          '
+
+      - name: Upload audit report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: npm-audit-report
+          path: app/npm-audit.json
+          if-no-files-found: ignore
+          retention-days: 30
+
+  # ── Licence compliance ───────────────────────────────────────────────────
+  licenses:
+    name: Licence compliance
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: ./.github/actions/setup-node
+
+      - uses: ./.github/actions/setup-rust
+        with:
+          cache-key: licenses
+
+      - name: Check npm and cargo dependency licences
+        run: node scripts/ci/check-licenses.mjs --ecosystem all
+
+  # ── New dependencies introduced by this PR ───────────────────────────────
+  dependency-review:
+    name: Dependency review
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v5
+
+      # Blocks a PR that *adds* a vulnerable or badly-licensed dependency, even
+      # when the rest of the tree is already clean.
+      - uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: high
+          deny-licenses: AGPL-3.0, AGPL-3.0-or-later, GPL-3.0, SSPL-1.0, BUSL-1.1
+          comment-summary-in-pr: on-failure
+
+  # ── Static application security testing ──────────────────────────────────
+  sast:
+    name: SAST (Semgrep)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v5
+
+      # Installed with pipx rather than run via `container: semgrep/semgrep`:
+      # that image is Alpine-based, and the runner cannot inject its glibc Node
+      # into a musl container, so every `uses:` step in the job would fail.
+      - name: Install Semgrep
+        run: |
+          pipx install semgrep
+          semgrep --version
+
+      # `p/ci` is Semgrep's curated low-false-positive rule set; the extra
+      # packs target the languages actually in this repo.
+      - name: Run Semgrep
+        run: |
+          semgrep scan \
+            --config=p/ci \
+            --config=p/javascript \
+            --config=p/typescript \
+            --config=p/rust \
+            --config=p/secrets \
+            --sarif --output=semgrep.sarif \
+            --metrics=off \
+            --exclude='**/node_modules/**' \
+            --exclude='**/target/**' \
+            --exclude='**/build/**' \
+            --exclude='circuits/keys/**' \
+            || true
+
+      - name: Upload SARIF to code scanning
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: semgrep.sarif
+          category: semgrep
+
+      # Findings are surfaced in the Security tab. Promote to a blocking gate
+      # by removing `|| true` above once the backlog is triaged.
+      - name: Summarise findings
+        if: always()
+        run: |
+          if [ -f semgrep.sarif ]; then
+            count=$(grep -o '"ruleId"' semgrep.sarif | wc -l)
+            echo "### Semgrep: $count finding(s) — see the Security tab" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+  security:
+    name: Security
+    runs-on: ubuntu-latest
+    if: always()
+    needs: [secrets, cargo-audit, npm-audit, licenses, dependency-review, sast]
+    steps:
+      - name: Evaluate security checks
+        env:
+          RESULTS: ${{ toJSON(needs) }}
+        run: |
+          echo "$RESULTS"
+          failed="$(echo "$RESULTS" | node -e '
+            let s = ""
+            process.stdin.on("data", (d) => (s += d)).on("end", () => {
+              const needs = JSON.parse(s)
+              process.stdout.write(
+                Object.entries(needs)
+                  .filter(([, v]) => !["success", "skipped"].includes(v.result))
+                  .map(([k, v]) => `${k}=${v.result}`)
+                  .join(" ")
+              )
+            })
+          ')"
+          if [ -n "$failed" ]; then
+            echo "::error::security checks failed: $failed"
+            exit 1
+          fi
+          echo "### ✅ Security checks passed" >> "$GITHUB_STEP_SUMMARY"
