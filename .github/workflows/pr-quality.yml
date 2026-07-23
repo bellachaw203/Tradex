@@ -1,0 +1,100 @@
+
+# Pull-request hygiene checks that are about the PR itself rather than the code
+# in it: title format, size, and merge readiness.
+#
+# Conventional-commit titles are not cosmetic here — release.yml derives the
+# semantic version bump and the changelog from them, so a malformed title
+# produces a wrong release.
+name: PR Quality
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened, ready_for_review]
+    branches: [main]
+
+concurrency:
+  group: pr-quality-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  title:
+    name: Conventional commit title
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Validate PR title
+        env:
+          # Passed through the environment, never interpolated into the script
+          # body: a PR title is untrusted input and `${{ }}` inside `run:` is a
+          # shell-injection vector.
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: ./scripts/ci/check-pr-title.sh "$PR_TITLE"
+
+  size:
+    name: Change size
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      # Advisory only. A large PR is sometimes unavoidable (a dependency bump,
+      # a generated file); the point is to make the reviewer's job visible, not
+      # to block work.
+      - name: Report diff size
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          git fetch --no-tags origin "$BASE_REF"
+          base="origin/$BASE_REF"
+
+          # Generated and vendored files do not represent review effort.
+          stats="$(git diff --numstat "$base"...HEAD -- \
+            ':!**/package-lock.json' ':!**/Cargo.lock' ':!**/bun.lock' \
+            ':!circuits/keys/**' ':!**/*.svg' ':!**/*.png')"
+
+          added=$(echo "$stats" | awk '{a+=$1} END {print a+0}')
+          removed=$(echo "$stats" | awk '{r+=$2} END {print r+0}')
+          files=$(echo "$stats" | grep -c . || true)
+          total=$((added + removed))
+
+          if   [ "$total" -lt 50 ];   then size="XS"
+          elif [ "$total" -lt 200 ];  then size="S"
+          elif [ "$total" -lt 600 ];  then size="M"
+          elif [ "$total" -lt 1500 ]; then size="L"
+          else                             size="XL"
+          fi
+
+          {
+            echo "### Change size: \`$size\`"
+            echo
+            echo "| Files | Added | Removed |"
+            echo "| ---: | ---: | ---: |"
+            echo "| $files | +$added | -$removed |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          if [ "$size" = "XL" ]; then
+            echo "::warning::This PR changes $total lines across $files files. Consider splitting it — large PRs get shallower reviews."
+          fi
+
+  draft:
+    name: Ready for review
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      # Draft PRs still run CI (useful signal) but must not be mergeable.
+      - name: Fail while the PR is a draft
+        if: github.event.pull_request.draft
+        run: |
+          echo "::error::This pull request is still a draft. Mark it ready for review before merging."
+          exit 1
+
+      - name: Ready
+        if: '!github.event.pull_request.draft'
+        run: echo "PR is ready for review."
