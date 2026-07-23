@@ -1,0 +1,187 @@
+
+# Continuous Integration — the gate every change passes before reaching main.
+#
+# Structure:
+#   changes    → works out which parts of the monorepo this change touches
+#   hygiene    → lockfiles, env config, secret scan (cheap, always runs)
+#   contracts  → reusable-contracts.yml  (fmt, clippy, tests, wasm, artifacts)
+#   frontend   → reusable-frontend.yml   (lint, format, types, tests, build)
+#   ci         → single aggregated status, the one required branch-protection check
+#
+# Jobs are independent and run in parallel; the aggregator is what enforces
+# "nothing merges unless everything passed".
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# A new push to a PR makes the in-flight run obsolete — cancel it. Runs on main
+# are never cancelled, because they gate deployment.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  # ── Which parts of the repo does this change touch? ──────────────────────
+  changes:
+    name: Detect changed areas
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      contracts: ${{ steps.filter.outputs.contracts }}
+      frontend: ${{ steps.filter.outputs.frontend }}
+      circuits: ${{ steps.filter.outputs.circuits }}
+      tooling: ${{ steps.filter.outputs.tooling }}
+      docs_only: ${{ steps.filter.outputs.docs_only }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          # Full history so the merge base with the target branch is reachable.
+          fetch-depth: 0
+
+      - id: filter
+        env:
+          GITHUB_EVENT_BEFORE: ${{ github.event.before }}
+        run: ./scripts/ci/changed-paths.sh
+
+      - name: Summarise
+        run: |
+          {
+            echo "### Changed areas"
+            echo
+            echo "| Area | Affected |"
+            echo "| --- | :---: |"
+            echo "| Contracts | ${{ steps.filter.outputs.contracts }} |"
+            echo "| Frontend | ${{ steps.filter.outputs.frontend }} |"
+            echo "| Circuits | ${{ steps.filter.outputs.circuits }} |"
+            echo "| Tooling | ${{ steps.filter.outputs.tooling }} |"
+            echo "| Docs only | ${{ steps.filter.outputs.docs_only }} |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  # ── Repository hygiene — fast, and always relevant ───────────────────────
+  hygiene:
+    name: Repository hygiene
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - uses: ./.github/actions/setup-node
+        with:
+          install: 'false'
+
+      # verify-lockfiles.sh runs `cargo metadata --locked`, so the pinned
+      # toolchain has to be present — without this, rustup would download it
+      # implicitly, uncached, on every run.
+      - uses: ./.github/actions/setup-rust
+        with:
+          cache-key: hygiene
+
+      - name: Verify lockfiles
+        run: ./scripts/ci/verify-lockfiles.sh
+
+      - name: Validate environment configuration
+        run: ./scripts/ci/validate-env.sh
+
+      # A fast in-repo scan on every PR. The deeper, history-wide scan runs in
+      # security.yml — this one exists to fail in seconds, before the build.
+      - name: Scan changed files for secrets
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            git fetch --no-tags --depth=1 origin "${{ github.base_ref }}"
+            ./scripts/ci/scan-secrets.sh --range "origin/${{ github.base_ref }}...HEAD"
+          else
+            ./scripts/ci/scan-secrets.sh
+          fi
+
+      # The pipeline is code too. actionlint checks workflow syntax, expression
+      # contexts and `uses:` references; shellcheck (preinstalled on the runner)
+      # checks the shell inside every `run:` block.
+      - name: Lint the workflows
+        run: |
+          ./scripts/ci/install-tool.sh actionlint
+          actionlint -color -shellcheck "$(command -v shellcheck)"
+
+      - name: Lint the pipeline's own shell scripts
+        run: shellcheck -S warning scripts/ci/*.sh deploy/*.sh .githooks/pre-commit
+
+      - name: Verify shell scripts are executable
+        run: |
+          fail=0
+          for script in $(git ls-files '*.sh'); do
+            if [ "$(git ls-files -s "$script" | cut -d' ' -f1)" != "100755" ]; then
+              echo "::error file=$script::not marked executable — run: git update-index --chmod=+x $script"
+              fail=1
+            fi
+          done
+          exit $fail
+
+  # ── Smart contracts ──────────────────────────────────────────────────────
+  contracts:
+    name: Contracts
+    needs: changes
+    if: needs.changes.outputs.contracts == 'true'
+    uses: ./.github/workflows/reusable-contracts.yml
+    with:
+      upload-artifacts: true
+      artifact-name: contracts-wasm-${{ github.sha }}
+      # Only the run on main writes the shared cargo cache, so parallel PR runs
+      # cannot race each other for the same cache key.
+      cache-save: ${{ github.ref == 'refs/heads/main' }}
+
+  # ── Frontend ─────────────────────────────────────────────────────────────
+  frontend:
+    name: Frontend
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true'
+    uses: ./.github/workflows/reusable-frontend.yml
+    with:
+      upload-artifacts: true
+      artifact-name: frontend-dist-${{ github.sha }}
+      # Two Node majors on main to catch runtime-specific breakage early;
+      # a single version on PRs to keep the feedback loop short.
+      node-versions: ${{ github.ref == 'refs/heads/main' && '["20","22"]' || '["22"]' }}
+
+  # ── Aggregated gate ──────────────────────────────────────────────────────
+  # Point branch protection at this single job. Skipped upstream jobs are a
+  # pass (the area was untouched); failed or cancelled ones are not.
+  ci:
+    name: CI
+    runs-on: ubuntu-latest
+    if: always()
+    needs: [changes, hygiene, contracts, frontend]
+    steps:
+      - name: Evaluate required checks
+        env:
+          RESULTS: ${{ toJSON(needs) }}
+        run: |
+          echo "$RESULTS"
+          failed="$(echo "$RESULTS" | node -e '
+            let s = ""
+            process.stdin.on("data", (d) => (s += d)).on("end", () => {
+              const needs = JSON.parse(s)
+              const bad = Object.entries(needs)
+                .filter(([, v]) => !["success", "skipped"].includes(v.result))
+                .map(([k, v]) => `${k}=${v.result}`)
+              process.stdout.write(bad.join(" "))
+            })
+          ')"
+
+          if [ -n "$failed" ]; then
+            echo "::error::required checks did not pass: $failed"
+            echo "### ❌ CI failed" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "Failing jobs: \`$failed\`" >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+
+          echo "### ✅ All required checks passed" >> "$GITHUB_STEP_SUMMARY"
