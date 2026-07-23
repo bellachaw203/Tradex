@@ -52,10 +52,10 @@
     "jsdom": "^29.1.1",
     "prettier": "^3.9.6",
     "tailwindcss": "^4.1.13",
-    "typescript": "^5.9.2",
+    "typescript": "^7.0.2",
     "typescript-eslint": "^8.65.0",
-    "vite": "^7.1.7",
-    "vite-tsconfig-paths": "^5.1.4",
+    "vite": "^8.1.5",
+    "vite-tsconfig-paths": "^6.1.1",
     "vitest": "^4.1.10"
   },
   "_overrides_note": "axios/protobufjs are pinned forward in `overrides` below to patched versions for npm-audit advisories (transitive via the wallet kit / Coinbase SDK). Drop an entry once upstream ships the fix.",
