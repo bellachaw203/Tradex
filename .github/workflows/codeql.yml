@@ -1,0 +1,85 @@
+
+# GitHub CodeQL analysis.
+#
+# Separate from security.yml because CodeQL needs `security-events: write`,
+# runs considerably longer than the other scanners, and is scheduled
+# independently of them.
+name: CodeQL
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  schedule:
+    # Wednesdays 05:41 UTC — CodeQL query packs update between scheduled runs,
+    # so a weekly re-scan finds issues in code that has not changed.
+    - cron: '41 5 * * 3'
+  workflow_dispatch:
+
+concurrency:
+  group: codeql-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  analyze:
+    name: Analyze ${{ matrix.language }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      security-events: write
+      # Required for CodeQL to write results on PRs from forks.
+      actions: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - language: javascript-typescript
+            build-mode: none
+            experimental: false
+          # Lints the workflows in this directory for injection-prone patterns
+          # (untrusted `${{ }}` interpolation into run steps, over-broad
+          # permissions, unpinned actions).
+          - language: actions
+            build-mode: none
+            experimental: false
+          # Rust support is newer than the other packs. Kept non-blocking so a
+          # pack-side regression cannot wedge the merge queue; drop
+          # `experimental: true` to make it binding.
+          - language: rust
+            build-mode: none
+            experimental: true
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: ${{ matrix.build-mode }}
+          queries: security-extended
+          config: |
+            paths-ignore:
+              - app/build
+              - app/node_modules
+              - target
+              - circuits/keys
+              - '**/*.min.js'
+
+      - name: Analyze
+        id: analyze
+        continue-on-error: ${{ matrix.experimental }}
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: /language:${{ matrix.language }}
+
+      - name: Note experimental outcome
+        if: matrix.experimental && steps.analyze.outcome != 'success'
+        run: |
+          echo "::warning::CodeQL ${{ matrix.language }} analysis did not succeed (non-blocking)"
+          echo "### ⚠ CodeQL ${{ matrix.language }}: ${{ steps.analyze.outcome }} (non-blocking)" >> "$GITHUB_STEP_SUMMARY"
