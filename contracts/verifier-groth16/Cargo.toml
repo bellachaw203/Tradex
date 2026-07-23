@@ -13,5 +13,5 @@ types = { path = "../types" }
 [build-dependencies]
 ark-bn254 = "0.4"
 ark-ff = "0.4"
-num-bigint = "0.4"
+num-bigint = "0.5"
 serde_json = "1"

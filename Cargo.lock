@@ -160,7 +160,7 @@ dependencies = [
  "digest",
  "fnv",
  "merlin",
- "num-bigint",
+ "num-bigint 0.4.8",
  "rayon",
  "sha2",
 ]
@@ -208,7 +208,7 @@ dependencies = [
  "fnv",
  "hashbrown 0.15.5",
  "itertools 0.13.0",
- "num-bigint",
+ "num-bigint 0.4.8",
  "num-integer",
  "num-traits",
  "zeroize",
@@ -229,7 +229,7 @@ dependencies = [
  "fnv",
  "hashbrown 0.17.1",
  "itertools 0.14.0",
- "num-bigint",
+ "num-bigint 0.4.8",
  "num-integer",
  "num-traits",
  "rayon",
@@ -249,7 +249,7 @@ dependencies = [
  "derivative",
  "digest",
  "itertools 0.10.5",
- "num-bigint",
+ "num-bigint 0.4.8",
  "num-traits",
  "paste",
  "rustc_version",
@@ -270,7 +270,7 @@ dependencies = [
  "digest",
  "educe",
  "itertools 0.13.0",
- "num-bigint",
+ "num-bigint 0.4.8",
  "num-traits",
  "paste",
  "zeroize",
@@ -288,7 +288,7 @@ dependencies = [
  "ark-std 0.6.0",
  "digest",
  "educe",
- "num-bigint",
+ "num-bigint 0.4.8",
  "num-traits",
  "rayon",
  "zeroize",
@@ -330,7 +330,7 @@ version = "0.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7abe79b0e4288889c4574159ab790824d0033b9fdcb2a112a3182fac2e514565"
 dependencies = [
- "num-bigint",
+ "num-bigint 0.4.8",
  "num-traits",
  "proc-macro2",
  "quote",
@@ -343,7 +343,7 @@ version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "09be120733ee33f7693ceaa202ca41accd5653b779563608f1234f78ae07c4b3"
 dependencies = [
- "num-bigint",
+ "num-bigint 0.4.8",
  "num-traits",
  "proc-macro2",
  "quote",
@@ -356,7 +356,7 @@ version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4a0691ed21ef00ef89c1e9bda832eba493dda3ec2f8d892fb25b705f73f06bb8"
 dependencies = [
- "num-bigint",
+ "num-bigint 0.4.8",
  "num-traits",
  "proc-macro2",
  "quote",
@@ -436,7 +436,7 @@ dependencies = [
  "ark-std 0.6.0",
  "educe",
  "itertools 0.14.0",
- "num-bigint",
+ "num-bigint 0.4.8",
  "num-integer",
  "num-traits",
  "tracing",
@@ -468,7 +468,7 @@ dependencies = [
  "ark-serialize-derive 0.4.2",
  "ark-std 0.4.0",
  "digest",
- "num-bigint",
+ "num-bigint 0.4.8",
 ]
 
 [[package]]
@@ -481,7 +481,7 @@ dependencies = [
  "ark-std 0.5.0",
  "arrayvec",
  "digest",
- "num-bigint",
+ "num-bigint 0.4.8",
 ]
 
 [[package]]
@@ -493,7 +493,7 @@ dependencies = [
  "ark-serialize-derive 0.6.0",
  "ark-std 0.6.0",
  "digest",
- "num-bigint",
+ "num-bigint 0.4.8",
  "rayon",
  "serde_with",
 ]
@@ -669,7 +669,7 @@ version = "0.0.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0adabf37211a5276e46335feabcbb1530c95eb3fdf85f324c7db942770aa025d"
 dependencies = [
- "num-bigint",
+ "num-bigint 0.4.8",
  "proc-macro2",
  "quote",
  "syn 2.0.118",
@@ -681,7 +681,7 @@ version = "0.0.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9b04f2b1d34cb428043f14aa4c853d14294532e8bbde3b6a3bc2faaaae31a1dd"
 dependencies = [
- "num-bigint",
+ "num-bigint 0.4.8",
  "proc-macro2",
  "quote",
  "syn 2.0.118",
@@ -1564,9 +1564,19 @@ dependencies = [
 
 [[package]]
 name = "num-bigint"
-version = "0.4.7"
+version = "0.4.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c863e9ab5e7bf9c99ba75e1050f1e4d624ae87ed3532d6238ffbdc7b585dbbe6"
+checksum = "c89e69e7e0f03bea5ef08013795c25018e101932225a656383bd384495ecc367"
+dependencies = [
+ "num-integer",
+ "num-traits",
+]
+
+[[package]]
+name = "num-bigint"
+version = "0.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "93e7820bc0a80a0238e650327316f929ba18d5be054b647490a3a6a339f3e7c0"
 dependencies = [
  "num-integer",
  "num-traits",
@@ -1623,7 +1633,7 @@ checksum = "384b8ab6d37215f3c5301a95a4accb5d64aa607f1fcb26a11b5303878451b4fe"
 name = "orderbook"
 version = "0.1.0"
 dependencies = [
- "num-bigint",
+ "num-bigint 0.5.1",
  "serde_json",
  "soroban-sdk 27.0.0-rc.1",
  "types",
@@ -1654,7 +1664,7 @@ dependencies = [
  "ark-bn254 0.6.0",
  "ark-ff 0.6.0",
  "hex",
- "num-bigint",
+ "num-bigint 0.5.1",
  "rust-circuits",
  "serde_json",
  "soroban-sdk 27.0.0-rc.1",
@@ -1826,7 +1836,7 @@ dependencies = [
  "ark-std 0.6.0",
  "clap",
  "hex",
- "num-bigint",
+ "num-bigint 0.5.1",
  "rand",
  "serde",
  "serde_json",
@@ -2012,7 +2022,7 @@ dependencies = [
 name = "shielded-pool"
 version = "0.1.0"
 dependencies = [
- "num-bigint",
+ "num-bigint 0.5.1",
  "serde_json",
  "soroban-sdk 27.0.0-rc.1",
  "types",
@@ -2693,7 +2703,7 @@ version = "0.1.0"
 dependencies = [
  "ark-bn254 0.4.0",
  "ark-ff 0.4.2",
- "num-bigint",
+ "num-bigint 0.5.1",
  "serde_json",
  "soroban-sdk 27.0.0-rc.1",
  "types",
