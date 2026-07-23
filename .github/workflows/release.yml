@@ -1,0 +1,242 @@
+
+# Release automation: version bump → changelog → tag → GitHub Release.
+#
+# The version bump is derived from Conventional Commit messages since the last
+# tag (see scripts/ci/bump-version.sh), which is why pr-quality.yml enforces the
+# PR title format.
+#
+# Two entry points:
+#   workflow_dispatch  — cut a release from main, optionally forcing the level
+#   push of a v* tag   — build and publish a release for a tag pushed by hand
+#
+# Releases are never cut automatically on merge: choosing when to ship is a
+# human decision, and an accidental release cannot be un-published.
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      level:
+        description: Force a bump level (leave as "auto" to derive it from commits)
+        type: choice
+        required: false
+        default: auto
+        options: [auto, patch, minor, major]
+      dry_run:
+        description: Compute the version and changelog without tagging or publishing
+        type: boolean
+        required: false
+        default: false
+  push:
+    tags: ['v*.*.*']
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  # ── Work out the version and write the changelog ─────────────────────────
+  prepare:
+    name: Prepare release
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    outputs:
+      release: ${{ steps.bump.outputs.release }}
+      version: ${{ steps.bump.outputs.version }}
+      tag: ${{ steps.bump.outputs.tag }}
+      level: ${{ steps.bump.outputs.level }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          # Use a PAT if tag pushes need to trigger downstream workflows;
+          # GITHUB_TOKEN pushes deliberately do not (loop protection).
+          token: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
+
+      - uses: ./.github/actions/setup-node
+
+      - name: Compute the next version
+        id: bump
+        run: |
+          # if-blocks rather than `[ … ] && …`: a bare AND-list whose test is
+          # false returns non-zero, and every `run:` step is `bash -e`.
+          args=()
+          if [ "${{ inputs.level }}" != "auto" ]; then
+            args+=(--level "${{ inputs.level }}")
+          fi
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            args+=(--dry-run)
+          fi
+          ./scripts/ci/bump-version.sh "${args[@]}"
+
+      - name: Nothing to release
+        if: steps.bump.outputs.release != 'true'
+        run: |
+          echo "::notice::No release-worthy commits since the last tag — nothing to do."
+          echo "### No release" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "No \`feat\`, \`fix\`, \`perf\` or breaking-change commits since the last tag." >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Generate the changelog
+        if: steps.bump.outputs.release == 'true'
+        run: |
+          ./scripts/ci/changelog.sh "${{ steps.bump.outputs.version }}" --prepend
+          ./scripts/ci/changelog.sh "${{ steps.bump.outputs.version }}" > release-notes.md
+          cat release-notes.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload release notes
+        if: steps.bump.outputs.release == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-notes
+          path: release-notes.md
+          retention-days: 7
+
+      - name: Commit and tag
+        if: steps.bump.outputs.release == 'true' && inputs.dry_run != true
+        run: |
+          git config user.name  'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+
+          git add Cargo.toml Cargo.lock app/package.json app/package-lock.json CHANGELOG.md
+          git commit -m "chore(release): ${{ steps.bump.outputs.version }}
+
+          Version bumped by .github/workflows/release.yml.
+          Level: ${{ steps.bump.outputs.level }}"
+
+          # Annotated tag: it carries the release notes and is what
+          # `git describe` uses to bound the next changelog.
+          git tag -a "${{ steps.bump.outputs.tag }}" -F release-notes.md
+
+          git push origin HEAD:main
+          git push origin "${{ steps.bump.outputs.tag }}"
+
+  # ── Build the artifacts that go into the release ─────────────────────────
+  contracts:
+    name: Build contracts
+    needs: prepare
+    # Runs for a dispatched release that produced a tag, and for a hand-pushed tag.
+    if: always() && (needs.prepare.outputs.release == 'true' || startsWith(github.ref, 'refs/tags/v'))
+    uses: ./.github/workflows/reusable-contracts.yml
+    with:
+      upload-artifacts: true
+      artifact-name: release-contracts
+
+  frontend:
+    name: Build frontend
+    needs: prepare
+    if: always() && (needs.prepare.outputs.release == 'true' || startsWith(github.ref, 'refs/tags/v'))
+    uses: ./.github/workflows/reusable-frontend.yml
+    with:
+      upload-artifacts: true
+      artifact-name: release-frontend
+
+  # ── Publish ──────────────────────────────────────────────────────────────
+  publish:
+    name: Publish GitHub Release
+    needs: [prepare, contracts, frontend]
+    if: always() && needs.contracts.result == 'success' && needs.frontend.result == 'success' && github.event.inputs.dry_run != 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          # A dispatched release just pushed a tag; fetch it rather than the
+          # stale ref this run started from.
+          ref: ${{ needs.prepare.outputs.tag || github.ref }}
+
+      - name: Resolve the version being released
+        id: version
+        run: |
+          if [ -n "${{ needs.prepare.outputs.version }}" ]; then
+            version="${{ needs.prepare.outputs.version }}"
+            tag="${{ needs.prepare.outputs.tag }}"
+          else
+            tag="${GITHUB_REF#refs/tags/}"
+            version="${tag#v}"
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "Releasing $tag"
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-contracts
+          path: release/contracts
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-frontend
+          path: release/frontend
+
+      - name: Assemble release artifacts
+        run: |
+          mkdir -p dist
+          version="${{ steps.version.outputs.version }}"
+
+          # Contracts: the deployable wasm plus their checksums.
+          tar -czf "dist/tradex-contracts-${version}.tar.gz" -C release/contracts .
+
+          # Frontend: the static bundle, ready to drop on any host.
+          tar -czf "dist/tradex-frontend-${version}.tar.gz" -C release/frontend .
+
+          # The verifying keys the contracts were built against — without them
+          # a third party cannot reproduce or verify this build.
+          ( cd circuits/keys && \
+            tar -czf "$GITHUB_WORKSPACE/dist/tradex-circuit-keys-${version}.tar.gz" ./*_vk.json )
+
+          # Individual wasm files, so a deployer can grab just one.
+          cp release/contracts/*.wasm dist/ 2>/dev/null || true
+
+          cd dist
+          sha256sum ./* > "SHA256SUMS-${version}.txt"
+          ls -la
+
+      - name: Generate release notes
+        id: notes
+        run: |
+          version="${{ steps.version.outputs.version }}"
+          previous="$(git describe --tags --abbrev=0 --match 'v*' "${{ steps.version.outputs.tag }}^" 2>/dev/null || echo '')"
+          ./scripts/ci/changelog.sh "$version" "$previous" > notes.md
+
+          {
+            echo
+            echo "### 📦 Artifacts"
+            echo
+            echo '| File | SHA-256 |'
+            echo '| --- | --- |'
+            while read -r sum file; do
+              echo "| \`$(basename "$file")\` | \`${sum:0:16}…\` |"
+            done < "dist/SHA256SUMS-${version}.txt"
+            echo
+            echo "Verify with: \`sha256sum -c SHA256SUMS-${version}.txt\`"
+            echo
+            echo "### 🚀 Deploying this release"
+            echo
+            echo '```bash'
+            echo "gh release download ${{ steps.version.outputs.tag }} -p 'tradex-contracts-*.tar.gz'"
+            echo "tar -xzf tradex-contracts-${version}.tar.gz -C ./artifacts"
+            echo "./deploy/deploy.sh staging --wasm-dir ./artifacts"
+            echo '```'
+          } >> notes.md
+
+          cat notes.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Create the GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${{ steps.version.outputs.tag }}" \
+            --title "Tradex ${{ steps.version.outputs.tag }}" \
+            --notes-file notes.md \
+            --verify-tag \
+            dist/*
