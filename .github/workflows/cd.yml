@@ -1,0 +1,248 @@
+
+# Continuous Deployment.
+#
+# Two ways in:
+#   1. Automatically, after CI succeeds on main → deploys to `development`.
+#   2. Manually, via workflow_dispatch → any environment, with a dry-run option.
+#
+# Production is protected by the GitHub Environment of the same name: configure
+# required reviewers there and every production deploy waits for a human. See
+# docs/ci-cd/DEPLOYMENT.md for the exact repository settings.
+#
+# Artifacts are rebuilt here rather than downloaded from the CI run: a deploy
+# must be reproducible from the commit it claims to deploy, and cross-workflow
+# artifact reuse makes that provenance fuzzy.
+name: CD
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Target environment
+        type: choice
+        required: true
+        default: development
+        options: [development, staging, production]
+      dry_run:
+        description: Validate and print the plan without submitting anything
+        type: boolean
+        required: false
+        default: false
+      deploy_frontend:
+        description: Publish the frontend bundle as well as the contracts
+        type: boolean
+        required: false
+        default: true
+
+# Never run two deploys at the same environment concurrently, and never cancel
+# one in flight — a half-applied deployment is worse than a queued one.
+concurrency:
+  group: cd-${{ github.event.inputs.environment || 'development' }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  # ── Decide whether this run may deploy, and where ────────────────────────
+  guard:
+    name: Deployment guard
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      environment: ${{ steps.decide.outputs.environment }}
+      dry_run: ${{ steps.decide.outputs.dry_run }}
+      deploy_frontend: ${{ steps.decide.outputs.deploy_frontend }}
+      sha: ${{ steps.decide.outputs.sha }}
+    steps:
+      - id: decide
+        env:
+          EVENT: ${{ github.event_name }}
+          CI_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+          CI_SHA: ${{ github.event.workflow_run.head_sha }}
+          INPUT_ENV: ${{ github.event.inputs.environment }}
+          INPUT_DRY: ${{ github.event.inputs.dry_run }}
+          INPUT_FRONTEND: ${{ github.event.inputs.deploy_frontend }}
+        run: |
+          if [ "$EVENT" = "workflow_run" ]; then
+            # Only a green CI run may deploy. This is the gate that makes
+            # "deploys only follow successful CI" true rather than aspirational.
+            if [ "$CI_CONCLUSION" != "success" ]; then
+              echo "::notice::CI concluded '$CI_CONCLUSION' — not deploying."
+              exit 1
+            fi
+            echo "environment=development" >> "$GITHUB_OUTPUT"
+            echo "dry_run=false" >> "$GITHUB_OUTPUT"
+            echo "deploy_frontend=true" >> "$GITHUB_OUTPUT"
+            echo "sha=$CI_SHA" >> "$GITHUB_OUTPUT"
+          else
+            echo "environment=${INPUT_ENV:-development}" >> "$GITHUB_OUTPUT"
+            echo "dry_run=${INPUT_DRY:-false}" >> "$GITHUB_OUTPUT"
+            echo "deploy_frontend=${INPUT_FRONTEND:-true}" >> "$GITHUB_OUTPUT"
+            echo "sha=${{ github.sha }}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Summarise
+        run: |
+          {
+            echo "### Deployment plan"
+            echo
+            echo "| Field | Value |"
+            echo "| --- | --- |"
+            echo "| Environment | \`${{ steps.decide.outputs.environment }}\` |"
+            echo "| Commit | \`${{ steps.decide.outputs.sha }}\` |"
+            echo "| Dry run | \`${{ steps.decide.outputs.dry_run }}\` |"
+            echo "| Frontend | \`${{ steps.decide.outputs.deploy_frontend }}\` |"
+            echo "| Trigger | \`${{ github.event_name }}\` |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  # ── Build exactly what will be deployed ──────────────────────────────────
+  build-contracts:
+    name: Build contracts
+    needs: guard
+    uses: ./.github/workflows/reusable-contracts.yml
+    with:
+      upload-artifacts: true
+      artifact-name: deploy-contracts-${{ needs.guard.outputs.environment }}-${{ github.run_id }}
+
+  build-frontend:
+    name: Build frontend
+    needs: guard
+    if: needs.guard.outputs.deploy_frontend == 'true'
+    uses: ./.github/workflows/reusable-frontend.yml
+    with:
+      upload-artifacts: true
+      artifact-name: deploy-frontend-${{ needs.guard.outputs.environment }}-${{ github.run_id }}
+      environment: ${{ needs.guard.outputs.environment }}
+
+  # ── Deploy ───────────────────────────────────────────────────────────────
+  deploy:
+    name: Deploy to ${{ needs.guard.outputs.environment }}
+    needs: [guard, build-contracts, build-frontend]
+    # `always()` so a skipped frontend build does not skip the deploy, but the
+    # contract build must genuinely have succeeded.
+    if: always() && needs.build-contracts.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    # This is what makes production deployments wait for an approver: the
+    # environment's protection rules are evaluated before the job starts.
+    environment:
+      name: ${{ needs.guard.outputs.environment }}
+      url: ${{ vars.DEPLOYMENT_URL }}
+
+    outputs:
+      manifest: ${{ steps.deploy.outputs.manifest }}
+
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ needs.guard.outputs.sha }}
+          fetch-depth: 0
+
+      - name: Download contract artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: deploy-contracts-${{ needs.guard.outputs.environment }}-${{ github.run_id }}
+          path: artifacts/contracts
+
+      - name: Download frontend bundle
+        if: needs.build-frontend.result == 'success'
+        uses: actions/download-artifact@v4
+        with:
+          name: deploy-frontend-${{ needs.guard.outputs.environment }}-${{ github.run_id }}
+          path: artifacts/frontend
+
+      - name: Install stellar CLI
+        run: ./scripts/ci/install-tool.sh stellar
+
+      # Rollback needs to know what the previous deployment was. Manifests are
+      # restored from the last successful CD run's artifact, so history survives
+      # across runs without giving this workflow write access to the repo.
+      #
+      # For history longer than the 90-day artifact retention, commit
+      # deploy/manifests/ to main — see docs/ci-cd/DEPLOYMENT.md.
+      - name: Restore previous deployment manifests
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ENVIRONMENT: ${{ needs.guard.outputs.environment }}
+        run: ./scripts/ci/restore-manifests.sh "$ENVIRONMENT"
+
+      - name: Deploy contracts
+        id: deploy
+        env:
+          # Supplied by the GitHub Environment, so production credentials are
+          # only readable by a run that cleared the environment's approval.
+          STELLAR_DEPLOYER_SECRET: ${{ secrets.STELLAR_DEPLOYER_SECRET }}
+        run: |
+          # if-blocks rather than `[ … ] && …`: a bare AND-list whose test is
+          # false returns non-zero, and every `run:` step is `bash -e`.
+          args=()
+          if [ "${{ needs.guard.outputs.dry_run }}" = "true" ]; then
+            args+=(--dry-run)
+          fi
+
+          ./deploy/deploy.sh "${{ needs.guard.outputs.environment }}" \
+            "${args[@]}" --wasm-dir artifacts/contracts
+
+          manifest="deploy/manifests/${{ needs.guard.outputs.environment }}/latest.json"
+          if [ -f "$manifest" ]; then
+            echo "manifest=$manifest" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Publish frontend
+        if: needs.build-frontend.result == 'success' && needs.guard.outputs.dry_run != 'true'
+        run: ./deploy/frontend.sh "${{ needs.guard.outputs.environment }}" --bundle artifacts/frontend
+
+      # Manifests and logs are the deployment record: which contract IDs, from
+      # which commit, by whom. Retained far longer than build artifacts.
+      - name: Upload deployment record
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: deployment-${{ needs.guard.outputs.environment }}-${{ github.run_id }}
+          path: |
+            deploy/manifests/${{ needs.guard.outputs.environment }}/
+          if-no-files-found: warn
+          retention-days: 90
+
+  # ── Automatic rollback ───────────────────────────────────────────────────
+  rollback:
+    name: Roll back ${{ needs.guard.outputs.environment }}
+    needs: [guard, deploy]
+    if: failure() && needs.deploy.result == 'failure' && needs.guard.outputs.dry_run != 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment:
+      name: ${{ needs.guard.outputs.environment }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Install stellar CLI
+        run: ./scripts/ci/install-tool.sh stellar
+
+      # Restores the previous manifest so clients point back at the last known
+      # good contracts. Deployed contracts are immutable, so this re-points
+      # rather than reverting — see the header of rollback.sh.
+      - name: Restore the previous deployment
+        run: ./deploy/rollback.sh "${{ needs.guard.outputs.environment }}"
+
+      - name: Upload rollback record
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rollback-${{ needs.guard.outputs.environment }}-${{ github.run_id }}
+          path: deploy/manifests/${{ needs.guard.outputs.environment }}/
+          if-no-files-found: warn
+          retention-days: 90
+
+      - name: Report
+        run: |
+          echo "::error::Deployment to ${{ needs.guard.outputs.environment }} failed and was rolled back."
+          echo "The frontend and keepers still need to be re-pointed — see the rollback job output."
