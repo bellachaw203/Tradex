@@ -1,0 +1,160 @@
+
+# Scheduled maintenance: the checks that matter even when nobody pushes.
+#
+# A repository can rot while sitting still — a new advisory lands against a
+# pinned dependency, a lockfile drifts, an action version is deprecated. These
+# jobs run weekly and open the failure as a visible signal rather than waiting
+# for the next PR to discover it.
+name: Maintenance
+
+on:
+  schedule:
+    # Sundays 06:23 UTC — before the working week, off the hour.
+    - cron: '23 6 * * 0'
+  workflow_dispatch:
+    inputs:
+      job:
+        description: Run a single job instead of all of them
+        type: choice
+        required: false
+        default: all
+        options: [all, health, caches, artifacts]
+
+permissions:
+  contents: read
+
+jobs:
+  # ── Does main still build and pass, untouched? ───────────────────────────
+  health:
+    name: Repository health
+    if: github.event_name == 'schedule' || inputs.job == 'all' || inputs.job == 'health'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - uses: ./.github/actions/setup-node
+      - uses: ./.github/actions/setup-rust
+        with:
+          cache-key: maintenance
+      - uses: ./.github/actions/circuit-keys
+
+      - name: Lockfiles still in sync
+        id: lockfiles
+        continue-on-error: true
+        run: ./scripts/ci/verify-lockfiles.sh
+
+      - name: Environment config still consistent
+        id: env
+        continue-on-error: true
+        run: ./scripts/ci/validate-env.sh
+
+      - name: Contracts still build
+        id: contracts
+        continue-on-error: true
+        run: |
+          cargo build --locked --target wasm32v1-none --release \
+            -p orderbook -p perp-engine -p shielded-pool -p collateral -p verifier-groth16
+
+      - name: Contract tests still pass
+        id: tests
+        continue-on-error: true
+        run: cargo test --locked -p types -p collateral -p orderbook -p perp-engine
+
+      - name: Frontend still builds
+        id: frontend
+        continue-on-error: true
+        working-directory: app
+        run: npm run build
+
+      # Reported rather than silently failing: the point of this job is a
+      # readable weekly status, with a non-zero exit when something regressed.
+      - name: Report
+        run: |
+          {
+            echo "### Weekly repository health"
+            echo
+            echo "| Check | Result |"
+            echo "| --- | :---: |"
+            echo "| Lockfiles | ${{ steps.lockfiles.outcome == 'success' && '✅' || '❌' }} |"
+            echo "| Environment config | ${{ steps.env.outcome == 'success' && '✅' || '❌' }} |"
+            echo "| Contract build | ${{ steps.contracts.outcome == 'success' && '✅' || '❌' }} |"
+            echo "| Contract tests | ${{ steps.tests.outcome == 'success' && '✅' || '❌' }} |"
+            echo "| Frontend build | ${{ steps.frontend.outcome == 'success' && '✅' || '❌' }} |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          for outcome in "${{ steps.lockfiles.outcome }}" "${{ steps.env.outcome }}" \
+                         "${{ steps.contracts.outcome }}" "${{ steps.tests.outcome }}" \
+                         "${{ steps.frontend.outcome }}"; do
+            [ "$outcome" = "success" ] || exit 1
+          done
+
+  # ── Reclaim Actions cache space ──────────────────────────────────────────
+  caches:
+    name: Prune caches
+    if: github.event_name == 'schedule' || inputs.job == 'all' || inputs.job == 'caches'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      actions: write
+    steps:
+      # A repository has a fixed cache quota; once it fills, GitHub evicts
+      # entries by age — including the warm main-branch cache every PR depends
+      # on. Deleting caches for merged branches keeps that one alive.
+      - name: Delete caches for closed branches
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          open_refs="$(gh pr list --repo "$REPO" --state open --json headRefName \
+                       --jq '.[].headRefName' | sed 's|^|refs/pull/|')"
+
+          deleted=0
+          gh cache list --repo "$REPO" --limit 200 --json id,ref,key,sizeInBytes \
+            --jq '.[] | [.id, .ref, .key] | @tsv' \
+          | while IFS=$'\t' read -r id ref key; do
+              case "$ref" in
+                refs/heads/main) continue ;;                    # keep the warm cache
+              esac
+              # Keep caches belonging to still-open pull requests.
+              if printf '%s\n' "$open_refs" | grep -q "^${ref%/merge}$"; then
+                continue
+              fi
+              gh cache delete "$id" --repo "$REPO" && deleted=$((deleted + 1))
+              echo "deleted cache $key ($ref)"
+            done
+
+          echo "### Cache pruning complete" >> "$GITHUB_STEP_SUMMARY"
+          gh cache list --repo "$REPO" --limit 5 >> "$GITHUB_STEP_SUMMARY" || true
+
+  # ── Report on artifact retention ─────────────────────────────────────────
+  artifacts:
+    name: Artifact inventory
+    if: github.event_name == 'schedule' || inputs.job == 'all' || inputs.job == 'artifacts'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      actions: read
+    steps:
+      - name: Summarise stored artifacts
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          gh api "repos/$REPO/actions/artifacts?per_page=100" \
+            --jq '[.artifacts[] | select(.expired == false)] |
+                  group_by(.name | sub("-[0-9a-f]{7,}$"; "")) |
+                  map({name: .[0].name, count: length,
+                       mb: (map(.size_in_bytes) | add / 1048576 | floor)}) |
+                  sort_by(-.mb)[] | "| \(.name) | \(.count) | \(.mb) MB |"' \
+            > rows.txt || echo "" > rows.txt
+
+          {
+            echo "### Stored artifacts"
+            echo
+            echo "| Artifact | Count | Size |"
+            echo "| --- | ---: | ---: |"
+            cat rows.txt
+          } >> "$GITHUB_STEP_SUMMARY"
