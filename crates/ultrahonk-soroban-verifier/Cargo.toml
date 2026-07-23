@@ -4,7 +4,7 @@ version.workspace = true
 edition.workspace = true
 
 [dependencies]
-soroban-sdk = { version = "26.0.1", default-features = false }
+soroban-sdk = { version = "27.0.2", default-features = false }
 
 [features]
 default = []
