@@ -1,8 +1,13 @@
 import { useEffect, useState } from 'react'
-import { IconArrowDownToArc, IconArrowUpFromArc, IconExternalLink, IconX } from '@tabler/icons-react'
+import {
+  IconArrowDownToArc,
+  IconArrowUpFromArc,
+  IconExternalLink,
+  IconX,
+} from '@tabler/icons-react'
 import { formatUsd } from './format'
 import { useWallet } from '../../context/wallet-context'
-import { buildDepositNoteTx, CONTRACT_IDS, submitAndWait } from '../../lib/contracts'
+import { buildDepositNoteTx, submitAndWait } from '../../lib/contracts'
 import { tee } from '../../lib/tee-client'
 import { toast } from '../toast/toast-context'
 
@@ -34,7 +39,11 @@ function TransferPanel({ mode }: { mode: 'deposit' | 'withdraw' }) {
     if (parsed <= 0) return
 
     setBusy(true)
-    const progressId = toast.progress(label, 10, isDeposit ? 'Computing note commitment…' : 'Generating spend proof…')
+    const progressId = toast.progress(
+      label,
+      10,
+      isDeposit ? 'Computing note commitment…' : 'Generating spend proof…'
+    )
     try {
       const collateralUnits = BigInt(Math.round(parsed * PRICE_SCALE))
       const noteSecret = Math.floor(Math.random() * Number.MAX_SAFE_INTEGER)
@@ -50,7 +59,12 @@ function TransferPanel({ mode }: { mode: 'deposit' | 'withdraw' }) {
 
         // Persist note secret locally so user can spend it later
         const notes = JSON.parse(localStorage.getItem('tradex-notes') ?? '[]')
-        notes.push({ note_cmt, secret: noteSecret, amount: Number(collateralUnits), depositedAt: Date.now() })
+        notes.push({
+          note_cmt,
+          secret: noteSecret,
+          amount: Number(collateralUnits),
+          depositedAt: Date.now(),
+        })
         localStorage.setItem('tradex-notes', JSON.stringify(notes))
 
         // Also store in shielded pool format for the Pool modal
@@ -116,7 +130,10 @@ function TransferPanel({ mode }: { mode: 'deposit' | 'withdraw' }) {
           <input
             type="number"
             value={amount}
-            onChange={(e) => { setAmount(e.target.value); setPct(null) }}
+            onChange={(e) => {
+              setAmount(e.target.value)
+              setPct(null)
+            }}
             placeholder="0.00"
             min="0"
             step="any"
@@ -142,7 +159,10 @@ function TransferPanel({ mode }: { mode: 'deposit' | 'withdraw' }) {
           </button>
         ))}
         <button
-          onClick={() => { setPct(100); setAmount(walletUsdcDollars.toFixed(2)) }}
+          onClick={() => {
+            setPct(100)
+            setAmount(walletUsdcDollars.toFixed(2))
+          }}
           className={`flex-1 rounded-[5px] py-1.5 text-[12px] font-medium transition-colors ${
             pct === 100
               ? 'bg-surface-hover text-text-primary'
@@ -204,30 +224,24 @@ function opLabel(op: HorizonOp): string {
   if (op.type !== 'invoke_host_function') return op.type
   // Try to infer from the function field if present
   const fn = (op.function ?? '').toLowerCase()
-  if (fn.includes('deposit_note'))              return 'Deposit (shielded note)'
-  if (fn.includes('open_position_from_note'))   return 'Open Position'
-  if (fn.includes('place_order'))               return 'Place Order'
-  if (fn.includes('cancel_order'))              return 'Cancel Order'
-  if (fn.includes('withdraw_note'))             return 'Withdraw (note)'
-  if (fn.includes('liquidate'))                 return 'Liquidated'
+  if (fn.includes('deposit_note')) return 'Deposit (shielded note)'
+  if (fn.includes('open_position_from_note')) return 'Open Position'
+  if (fn.includes('place_order')) return 'Place Order'
+  if (fn.includes('cancel_order')) return 'Cancel Order'
+  if (fn.includes('withdraw_note')) return 'Withdraw (note)'
+  if (fn.includes('liquidate')) return 'Liquidated'
   return 'Contract call'
 }
 
 function TxHistory({ publicKey }: { publicKey: string }) {
-  const [records, setRecords]   = useState<TxRecord[]>([])
-  const [loading, setLoading]   = useState(true)
-  const [error, setError]       = useState(false)
+  const [records, setRecords] = useState<TxRecord[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(false)
 
   useEffect(() => {
     let cancelled = false
     setLoading(true)
     setError(false)
-
-    const contracts = new Set([
-      CONTRACT_IDS.perpEngine,
-      CONTRACT_IDS.orderbook,
-      CONTRACT_IDS.collateralToken,
-    ])
 
     fetch(`${HORIZON}/accounts/${publicKey}/operations?limit=100&order=desc&include_failed=false`)
       .then((r) => r.json())
@@ -245,8 +259,10 @@ function TxHistory({ publicKey }: { publicKey: string }) {
             hash: op.transaction_hash,
             label: opLabel(op),
             time: new Date(op.created_at).toLocaleString('en-US', {
-              month: 'short', day: 'numeric',
-              hour: '2-digit', minute: '2-digit',
+              month: 'short',
+              day: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit',
             }),
             href: `https://stellar.expert/explorer/testnet/tx/${op.transaction_hash}`,
           }))
@@ -254,10 +270,15 @@ function TxHistory({ publicKey }: { publicKey: string }) {
         setLoading(false)
       })
       .catch(() => {
-        if (!cancelled) { setError(true); setLoading(false) }
+        if (!cancelled) {
+          setError(true)
+          setLoading(false)
+        }
       })
 
-    return () => { cancelled = true }
+    return () => {
+      cancelled = true
+    }
   }, [publicKey])
 
   if (loading) {
@@ -318,9 +339,9 @@ export default function PortfolioPage({ onClose }: { onClose: () => void }) {
   const walletUsdc = Number(balance) / PRICE_SCALE
 
   const statCards = [
-    { label: 'Wallet USDC',   value: connected ? formatUsd(walletUsdc) : '—' },
+    { label: 'Wallet USDC', value: connected ? formatUsd(walletUsdc) : '—' },
     { label: 'Shielded Pool', value: '—' },
-    { label: 'In Positions',  value: '—' },
+    { label: 'In Positions', value: '—' },
     { label: 'Unrealized PnL', value: '—' },
   ]
 
@@ -374,7 +395,9 @@ export default function PortfolioPage({ onClose }: { onClose: () => void }) {
                     key={t}
                     onClick={() => setTab(t)}
                     className={`relative flex flex-1 items-center justify-center gap-2 py-2.5 text-[12px] font-semibold uppercase tracking-widest transition-colors ${
-                      tab === t ? 'text-text-primary' : 'text-text-quaternary hover:text-text-secondary'
+                      tab === t
+                        ? 'text-text-primary'
+                        : 'text-text-quaternary hover:text-text-secondary'
                     }`}
                   >
                     {t === 'deposit' ? (

@@ -39,7 +39,7 @@ function makeRow(base: number, idx: number, ts: number): TradeRow {
 const POLL_MS = 2500
 
 export default function TradesTape() {
-  const { mark, bids, asks } = useMarket()
+  const { mark } = useMarket()
   const markRef = useRef(mark)
   markRef.current = mark
 
@@ -73,7 +73,9 @@ export default function TradesTape() {
           })
           return
         }
-      } catch { /* TEE offline — fall through to synthetic */ }
+      } catch {
+        /* TEE offline — fall through to synthetic */
+      }
 
       // Synthetic: inject 1–2 new rows at the top
       if (!cancelled) {

@@ -26,10 +26,8 @@ export const TESTNET_DEPLOYMENT = {
   admin: 'GAJ7S6YWC3O7IWHXRB6INR2SPHI5FXYKW7F6MDY3RTPYPK27NYG5GKZB',
 } as const
 
-export const NETWORK_PASSPHRASE =
-  import.meta.env.VITE_NETWORK_PASSPHRASE ?? Networks.TESTNET
-export const RPC_URL =
-  import.meta.env.VITE_SOROBAN_RPC_URL ?? 'https://soroban-testnet.stellar.org'
+export const NETWORK_PASSPHRASE = import.meta.env.VITE_NETWORK_PASSPHRASE ?? Networks.TESTNET
+export const RPC_URL = import.meta.env.VITE_SOROBAN_RPC_URL ?? 'https://soroban-testnet.stellar.org'
 
 /**
  * Funded account used purely as the source for read-only `simulateTransaction`
@@ -41,13 +39,10 @@ export const SIMULATION_SOURCE =
   (import.meta.env.VITE_SIMULATION_SOURCE as string) || TESTNET_DEPLOYMENT.admin
 
 export const CONTRACT_IDS = {
-  perpEngine:
-    (import.meta.env.VITE_PERP_ENGINE_ID as string) || TESTNET_DEPLOYMENT.perpEngine,
-  orderbook:
-    (import.meta.env.VITE_ORDERBOOK_ID as string) || TESTNET_DEPLOYMENT.orderbook,
+  perpEngine: (import.meta.env.VITE_PERP_ENGINE_ID as string) || TESTNET_DEPLOYMENT.perpEngine,
+  orderbook: (import.meta.env.VITE_ORDERBOOK_ID as string) || TESTNET_DEPLOYMENT.orderbook,
   collateralToken:
-    (import.meta.env.VITE_COLLATERAL_TOKEN_ID as string) ||
-    TESTNET_DEPLOYMENT.collateralToken,
+    (import.meta.env.VITE_COLLATERAL_TOKEN_ID as string) || TESTNET_DEPLOYMENT.collateralToken,
 } as const
 
 export const rpc = new SorobanRpc.Server(RPC_URL)
@@ -64,14 +59,6 @@ function u64ToScVal(value: number | bigint): xdr.ScVal {
 
 function addressToScVal(addr: string): xdr.ScVal {
   return new Address(addr).toScVal()
-}
-
-function hexToBytes(hex: string): Uint8Array {
-  const bytes = new Uint8Array(hex.length / 2)
-  for (let i = 0; i < bytes.length; i++) {
-    bytes[i] = parseInt(hex.substring(i * 2, i * 2 + 2), 16)
-  }
-  return bytes
 }
 
 function bytes32ToScVal(hex: string): xdr.ScVal {
@@ -95,7 +82,7 @@ export async function buildTx(
   sourcePublicKey: string,
   contractId: string,
   method: string,
-  args: xdr.ScVal[],
+  args: xdr.ScVal[]
 ) {
   return buildBundleTx(sourcePublicKey, [{ contractId, method, args }])
 }
@@ -103,10 +90,7 @@ export async function buildTx(
 /** Build a single transaction containing multiple contract calls.
  * Operations execute sequentially in order; storage writes by earlier ops
  * are visible to later ops within the same transaction. */
-export async function buildBundleTx(
-  sourcePublicKey: string,
-  calls: ContractCall[],
-) {
+export async function buildBundleTx(sourcePublicKey: string, calls: ContractCall[]) {
   const account = await rpc.getAccount(sourcePublicKey)
 
   const builder = new TransactionBuilder(account, {
@@ -136,13 +120,19 @@ export async function buildBundleTx(
 export function generateNote(): { secret: string; commitment: string; nullifier: string } {
   const bytes = new Uint8Array(32)
   crypto.getRandomValues(bytes)
-  const commitment = Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('')
+  const commitment = Array.from(bytes)
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('')
 
   crypto.getRandomValues(bytes)
-  const nullifier = Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('')
+  const nullifier = Array.from(bytes)
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('')
 
   crypto.getRandomValues(bytes)
-  const secret = Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('')
+  const secret = Array.from(bytes)
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('')
 
   return { secret, commitment, nullifier }
 }
@@ -160,9 +150,18 @@ function tifToScVal(value: number): xdr.ScVal {
 // Groth16Proof: placeholder zero proof (will fail on-chain until WASM prover is wired)
 function zeroProof(): xdr.ScVal {
   return xdr.ScVal.scvMap([
-    new xdr.ScMapEntry({ key: xdr.ScVal.scvSymbol('a'), val: xdr.ScVal.scvBytes(Buffer.alloc(64)) }),
-    new xdr.ScMapEntry({ key: xdr.ScVal.scvSymbol('b'), val: xdr.ScVal.scvBytes(Buffer.alloc(128)) }),
-    new xdr.ScMapEntry({ key: xdr.ScVal.scvSymbol('c'), val: xdr.ScVal.scvBytes(Buffer.alloc(64)) }),
+    new xdr.ScMapEntry({
+      key: xdr.ScVal.scvSymbol('a'),
+      val: xdr.ScVal.scvBytes(Buffer.alloc(64)),
+    }),
+    new xdr.ScMapEntry({
+      key: xdr.ScVal.scvSymbol('b'),
+      val: xdr.ScVal.scvBytes(Buffer.alloc(128)),
+    }),
+    new xdr.ScMapEntry({
+      key: xdr.ScVal.scvSymbol('c'),
+      val: xdr.ScVal.scvBytes(Buffer.alloc(64)),
+    }),
   ])
 }
 
@@ -174,9 +173,18 @@ function zeroProof(): xdr.ScVal {
 export function proofJsonToScVal(proofJson: string): xdr.ScVal {
   const p = JSON.parse(proofJson) as { a: string; b: string; c: string }
   return xdr.ScVal.scvMap([
-    new xdr.ScMapEntry({ key: xdr.ScVal.scvSymbol('a'), val: xdr.ScVal.scvBytes(Buffer.from(p.a, 'hex')) }),
-    new xdr.ScMapEntry({ key: xdr.ScVal.scvSymbol('b'), val: xdr.ScVal.scvBytes(Buffer.from(p.b, 'hex')) }),
-    new xdr.ScMapEntry({ key: xdr.ScVal.scvSymbol('c'), val: xdr.ScVal.scvBytes(Buffer.from(p.c, 'hex')) }),
+    new xdr.ScMapEntry({
+      key: xdr.ScVal.scvSymbol('a'),
+      val: xdr.ScVal.scvBytes(Buffer.from(p.a, 'hex')),
+    }),
+    new xdr.ScMapEntry({
+      key: xdr.ScVal.scvSymbol('b'),
+      val: xdr.ScVal.scvBytes(Buffer.from(p.b, 'hex')),
+    }),
+    new xdr.ScMapEntry({
+      key: xdr.ScVal.scvSymbol('c'),
+      val: xdr.ScVal.scvBytes(Buffer.from(p.c, 'hex')),
+    }),
   ])
 }
 
@@ -186,7 +194,9 @@ export function crossMarginKey(walletAddress: string): string {
   if (existing) return existing
   const bytes = new Uint8Array(32)
   crypto.getRandomValues(bytes)
-  const key = Array.from(bytes).map((b) => b.toString(16).padStart(2, '0')).join('')
+  const key = Array.from(bytes)
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('')
   localStorage.setItem(storageKey, key)
   return key
 }
@@ -212,7 +222,10 @@ export interface PositionMeta {
   assetId: string
 }
 
-export async function getPosition(commitment: string, sourcePublicKey?: string): Promise<PositionMeta | null> {
+export async function getPosition(
+  commitment: string,
+  sourcePublicKey?: string
+): Promise<PositionMeta | null> {
   try {
     const source = sourcePublicKey ?? 'GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN'
     const account = await rpc.getAccount(source)
@@ -261,16 +274,12 @@ export async function getPosition(commitment: string, sourcePublicKey?: string):
 export function depositNoteCall(
   sourcePublicKey: string,
   noteCommitment: string,
-  amount: bigint,
+  amount: bigint
 ): ContractCall {
   return {
     contractId: CONTRACT_IDS.perpEngine,
     method: 'deposit_note',
-    args: [
-      addressToScVal(sourcePublicKey),
-      bytes32ToScVal(noteCommitment),
-      i128ToScVal(amount),
-    ],
+    args: [addressToScVal(sourcePublicKey), bytes32ToScVal(noteCommitment), i128ToScVal(amount)],
   }
 }
 
@@ -278,7 +287,7 @@ export function depositNoteCall(
 export async function buildDepositNoteTx(
   sourcePublicKey: string,
   noteCommitment: string,
-  amount: bigint,
+  amount: bigint
 ) {
   return buildBundleTx(sourcePublicKey, [depositNoteCall(sourcePublicKey, noteCommitment, amount)])
 }
@@ -289,7 +298,7 @@ export async function buildWithdrawNoteTx(
   noteCmt: string,
   noteNull: string,
   recipientPk: string,
-  noteProof?: xdr.ScVal,
+  noteProof?: xdr.ScVal
 ) {
   return buildTx(sourcePublicKey, CONTRACT_IDS.perpEngine, 'withdraw_note', [
     bytes32ToScVal(noteCmt),
@@ -323,23 +332,21 @@ export async function getNoteBalance(noteCommitment: string): Promise<bigint | n
 // ── Position APIs ─────────────────────────────────────────────────────────────
 
 /** Pure op-builder: open a position from a shielded note. */
-export function openPositionFromNoteCall(
-  opts: {
-    noteCmt: string
-    noteNull: string
-    commitment: string
-    hintPrice: number
-    side: 0 | 1
-    leverage: number
-    size: number
-    tpPrice?: number
-    slPrice?: number
-    assetId?: string
-    portfolioKey?: string
-    noteProof?: xdr.ScVal
-    commitProof?: xdr.ScVal
-  },
-): ContractCall {
+export function openPositionFromNoteCall(opts: {
+  noteCmt: string
+  noteNull: string
+  commitment: string
+  hintPrice: number
+  side: 0 | 1
+  leverage: number
+  size: number
+  tpPrice?: number
+  slPrice?: number
+  assetId?: string
+  portfolioKey?: string
+  noteProof?: xdr.ScVal
+  commitProof?: xdr.ScVal
+}): ContractCall {
   const zeroNote = bytes32ToScVal('0'.repeat(64))
   const pk = bytes32ToScVal(opts.portfolioKey ?? '0'.repeat(64))
   const aid = bytes32ToScVal(opts.assetId ?? DEFAULT_ASSET)
@@ -371,7 +378,7 @@ export function openPositionFromNoteCall(
 /** Open a position from a shielded note. Requires NoteSpend + OrderCommitment proofs. */
 export async function buildOpenPositionFromNoteTx(
   sourcePublicKey: string,
-  opts: Parameters<typeof openPositionFromNoteCall>[0],
+  opts: Parameters<typeof openPositionFromNoteCall>[0]
 ) {
   return buildBundleTx(sourcePublicKey, [openPositionFromNoteCall(opts)])
 }
@@ -379,21 +386,19 @@ export async function buildOpenPositionFromNoteTx(
 // ── Order APIs ────────────────────────────────────────────────────────────────
 
 /** Pure op-builder: place an order in the orderbook. Requires an OrderCommitment proof. */
-export function placeOrderCall(
-  opts: {
-    commitment: string
-    hintPrice: number
-    hintSide: number
-    hintSize: number
-    hintLeverage: number
-    revealed?: number
-    tif?: number
-    expiryLedger?: number
-    assetId?: string
-    portfolioKey?: string
-    proof?: xdr.ScVal
-  },
-): ContractCall {
+export function placeOrderCall(opts: {
+  commitment: string
+  hintPrice: number
+  hintSide: number
+  hintSize: number
+  hintLeverage: number
+  revealed?: number
+  tif?: number
+  expiryLedger?: number
+  assetId?: string
+  portfolioKey?: string
+  proof?: xdr.ScVal
+}): ContractCall {
   const pk = bytes32ToScVal(opts.portfolioKey ?? '0'.repeat(64))
   const aid = bytes32ToScVal(opts.assetId ?? DEFAULT_ASSET)
   return {
@@ -418,7 +423,7 @@ export function placeOrderCall(
 /** Place an order in the orderbook. Requires an OrderCommitment proof. */
 export async function buildPlaceOrderTx(
   sourcePublicKey: string,
-  opts: Parameters<typeof placeOrderCall>[0],
+  opts: Parameters<typeof placeOrderCall>[0]
 ) {
   return buildBundleTx(sourcePublicKey, [placeOrderCall(opts)])
 }
@@ -448,7 +453,7 @@ export async function buildTradeBundleTx(
     slPrice?: number
     noteProof: xdr.ScVal
     commitProof: xdr.ScVal
-  },
+  }
 ) {
   return buildBundleTx(sourcePublicKey, [
     placeOrderCall({
@@ -483,7 +488,7 @@ export async function buildCancelOrderTx(
   sourcePublicKey: string,
   commitment: string,
   nullifier: string,
-  proof?: xdr.ScVal,
+  proof?: xdr.ScVal
 ) {
   return buildTx(sourcePublicKey, CONTRACT_IDS.orderbook, 'cancel_order', [
     bytes32ToScVal(commitment),
@@ -514,7 +519,7 @@ export function cancelPositionToNoteCall(opts: {
 /** Cancel an open position; collateral refunds to a shielded note. Requires an OrderCancel proof. */
 export async function buildCancelPositionTx(
   sourcePublicKey: string,
-  opts: Parameters<typeof cancelPositionToNoteCall>[0],
+  opts: Parameters<typeof cancelPositionToNoteCall>[0]
 ) {
   return buildBundleTx(sourcePublicKey, [cancelPositionToNoteCall(opts)])
 }
@@ -589,7 +594,7 @@ export async function submitAndWait(signedXdr: string): Promise<string> {
 export async function buildMintUsdcTx(
   sourcePublicKey: string,
   recipientPublicKey: string,
-  amount: bigint,
+  amount: bigint
 ) {
   return buildTx(sourcePublicKey, CONTRACT_IDS.collateralToken, 'mint', [
     addressToScVal(recipientPublicKey),

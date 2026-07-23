@@ -300,7 +300,7 @@ function Widget({
               ))}
             </div>
           </>,
-          document.body,
+          document.body
         )}
     </div>
   )
@@ -321,7 +321,10 @@ function TradeBoard({
   const { ref, width, rowHeight } = useGridSize()
   const nextId = useRef(0)
 
-  const addWidget = (type: WidgetType) => {
+  // Not wired to a control yet — widgets are currently added as tabs via
+  // `addTab`. Kept (underscore-prefixed so lint accepts it) because the
+  // "add panel" affordance in the layout menu will call it.
+  const _addWidget = (type: WidgetType) => {
     const spec = CATALOG[type]
     const id = `${type}-${++nextId.current}`
     setLayout((prev) => {
@@ -337,9 +340,7 @@ function TradeBoard({
   }
 
   const selectTab = (itemId: string, index: number) =>
-    setItems((prev) =>
-      prev.map((item) => (item.id === itemId ? { ...item, active: index } : item)),
-    )
+    setItems((prev) => prev.map((item) => (item.id === itemId ? { ...item, active: index } : item)))
 
   const addTab = (itemId: string, type: WidgetType) =>
     setItems((prev) =>
@@ -350,8 +351,8 @@ function TradeBoard({
               tabs: [...item.tabs, { id: `tab-${++nextId.current}`, type }],
               active: item.tabs.length,
             }
-          : item,
-      ),
+          : item
+      )
     )
 
   const closeTab = (itemId: string, index: number) =>
@@ -364,64 +365,75 @@ function TradeBoard({
             ? Math.max(0, item.active - 1)
             : item.active
         return { ...item, tabs, active }
-      }),
+      })
     )
 
   return (
     <NavProvider onActive={onActive}>
-    <div className="flex h-screen min-w-0 bg-page">
-      <Sidebar active={active} onActive={onActive} />
-      <div className="flex min-w-0 flex-1 flex-col">
-        {active === 'Portfolio' && <PortfolioPage onClose={() => onActive('Perps')} />}
-        {active === 'Pool' && <ShieldedPoolModal onClose={() => onActive('Perps')} />}
-        {settingsOpen && <SettingsModal onClose={() => setSettingsOpen(false)} />}
+      <div className="flex h-screen min-w-0 bg-page">
+        <Sidebar active={active} onActive={onActive} />
         <div className="flex min-w-0 flex-1 flex-col">
-          <MarketBar active={active} onActive={onActive} onOpenSettings={() => setSettingsOpen(true)} onNavigate={onNavigate} />
-          <div ref={ref} className="min-h-0 flex-1 overflow-auto">
-            <ReactGridLayout
-              layout={layout}
-              onLayoutChange={(next: Layout) => setLayout(next)}
-              cols={COLS}
-              rowHeight={rowHeight}
-              width={width}
-              margin={[GAP, GAP]}
-              containerPadding={[PAD, PAD]}
-              draggableHandle=".widget-handle"
-              draggableCancel="input,button,select,textarea,a"
-              resizeHandles={['s', 'e', 'se', 'w', 'n', 'sw', 'ne', 'nw']}
-              compactType="vertical"
-              preventCollision={false}
-              allowOverlap={false}
-              useCSSTransforms
-            >
-              {items.map((item) => {
-                const activeTab = item.tabs[item.active] ?? item.tabs[0]!
-                if (activeTab.type === 'chart') {
+          {active === 'Portfolio' && <PortfolioPage onClose={() => onActive('Perps')} />}
+          {active === 'Pool' && <ShieldedPoolModal onClose={() => onActive('Perps')} />}
+          {settingsOpen && <SettingsModal onClose={() => setSettingsOpen(false)} />}
+          <div className="flex min-w-0 flex-1 flex-col">
+            <MarketBar
+              active={active}
+              onActive={onActive}
+              onOpenSettings={() => setSettingsOpen(true)}
+              onNavigate={onNavigate}
+            />
+            <div ref={ref} className="min-h-0 flex-1 overflow-auto">
+              <ReactGridLayout
+                layout={layout}
+                onLayoutChange={(next: Layout) => setLayout(next)}
+                cols={COLS}
+                rowHeight={rowHeight}
+                width={width}
+                margin={[GAP, GAP]}
+                containerPadding={[PAD, PAD]}
+                draggableHandle=".widget-handle"
+                draggableCancel="input,button,select,textarea,a"
+                resizeHandles={['s', 'e', 'se', 'w', 'n', 'sw', 'ne', 'nw']}
+                compactType="vertical"
+                preventCollision={false}
+                allowOverlap={false}
+                useCSSTransforms
+              >
+                {items.map((item) => {
+                  const activeTab = item.tabs[item.active] ?? item.tabs[0]!
+                  if (activeTab.type === 'chart') {
+                    return (
+                      <div
+                        key={item.id}
+                        className="h-full overflow-hidden rounded-[8px] bg-surface-primary"
+                      >
+                        <WidgetContent type="chart" />
+                      </div>
+                    )
+                  }
                   return (
-                    <div key={item.id} className="h-full overflow-hidden rounded-[8px] bg-surface-primary">
-                      <WidgetContent type="chart" />
+                    <div key={item.id} className="h-full">
+                      <Widget
+                        tabs={item.tabs.map((tab) => ({
+                          id: tab.id,
+                          label: CATALOG[tab.type].label,
+                        }))}
+                        active={item.active}
+                        content={<WidgetContent type={activeTab.type} />}
+                        onSelect={(index) => selectTab(item.id, index)}
+                        onAddTab={(type) => addTab(item.id, type)}
+                        onCloseTab={(index) => closeTab(item.id, index)}
+                        onClose={() => removeWidget(item.id)}
+                      />
                     </div>
                   )
-                }
-                return (
-                  <div key={item.id} className="h-full">
-                    <Widget
-                      tabs={item.tabs.map((tab) => ({ id: tab.id, label: CATALOG[tab.type].label }))}
-                      active={item.active}
-                      content={<WidgetContent type={activeTab.type} />}
-                      onSelect={(index) => selectTab(item.id, index)}
-                      onAddTab={(type) => addTab(item.id, type)}
-                      onCloseTab={(index) => closeTab(item.id, index)}
-                      onClose={() => removeWidget(item.id)}
-                    />
-                  </div>
-                )
-              })}
-            </ReactGridLayout>
+                })}
+              </ReactGridLayout>
+            </div>
           </div>
         </div>
       </div>
-    </div>
     </NavProvider>
   )
 }

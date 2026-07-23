@@ -47,9 +47,9 @@ function rand(seed: number) {
 
 function dynamicTick(price: number): number {
   if (price > 10000) return 1.0
-  if (price > 1000)  return 0.1
-  if (price > 100)   return 0.01
-  if (price > 1)     return 0.001
+  if (price > 1000) return 0.1
+  if (price > 100) return 0.01
+  if (price > 1) return 0.001
   return 0.0001
 }
 
@@ -98,7 +98,7 @@ function levelsToRows(levels: OrderBookLevel[], reverse: boolean): RowData[] {
   const range = maxSize - minSize
   // Range-normalize so gradient has contrast even with uniform market-maker sizes.
   // Only flag as whale if a row is truly a standout outlier (top 10% of range).
-  const whaleCutoff = range > maxSize * 0.1 ? minSize + range * 0.90 : Infinity
+  const whaleCutoff = range > maxSize * 0.1 ? minSize + range * 0.9 : Infinity
   let idx = 0
   return display.map((l) => {
     const whale = l.size >= whaleCutoff
@@ -125,7 +125,11 @@ function fmtSize(n: number) {
   return n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n)
 }
 
-function lerpRGBA(a: [number, number, number, number], b: [number, number, number, number], t: number) {
+function lerpRGBA(
+  a: [number, number, number, number],
+  b: [number, number, number, number],
+  t: number
+) {
   const r = a[0] + (b[0] - a[0]) * t
   const g = a[1] + (b[1] - a[1]) * t
   const bl = a[2] + (b[2] - a[2]) * t
@@ -141,8 +145,8 @@ function gradColor(stops: [number, number, number, number][], t: number) {
 
 function fmtPrice(price: number): string {
   if (price > 1000) return price.toFixed(1)
-  if (price > 10)   return price.toFixed(2)
-  if (price > 1)    return price.toFixed(3)
+  if (price > 10) return price.toFixed(2)
+  if (price > 1) return price.toFixed(3)
   return price.toFixed(4)
 }
 
@@ -175,8 +179,8 @@ export default function OrderBook() {
       const sortedAsks = [...liveAsks].sort((a, b) => a.price - b.price)
       const sortedBids = [...liveBids].sort((a, b) => b.price - a.price)
       return {
-        askRows: levelsToRows(sortedAsks, true),  // display high-to-low (asks reversed)
-        bidRows: levelsToRows(sortedBids, false),  // display high-to-low (bids natural)
+        askRows: levelsToRows(sortedAsks, true), // display high-to-low (asks reversed)
+        bidRows: levelsToRows(sortedBids, false), // display high-to-low (bids natural)
       }
     }
     return { askRows: null, bidRows: null }
@@ -201,15 +205,15 @@ export default function OrderBook() {
     const displayBids = bids.slice(0, rowsPerSide)
 
     const maxSize = Math.max(...displayAsks.map((r) => r.size), ...displayBids.map((r) => r.size))
-    const maxCum  = Math.max(displayAsks[0]?.cumulative ?? 0, displayBids.at(-1)?.cumulative ?? 0)
+    const maxCum = Math.max(displayAsks[0]?.cumulative ?? 0, displayBids.at(-1)?.cumulative ?? 0)
     const barW = Math.max(0, w - HEAT_W - PW - SW)
 
     const cs = getComputedStyle(el)
     const colors = {
-      primary:    cs.getPropertyValue('--color-text-primary').trim() || '#e8e8e8',
-      tertiary:   cs.getPropertyValue('--color-text-tertiary').trim() || '#9a9a9a',
+      primary: cs.getPropertyValue('--color-text-primary').trim() || '#e8e8e8',
+      tertiary: cs.getPropertyValue('--color-text-tertiary').trim() || '#9a9a9a',
       quaternary: cs.getPropertyValue('--color-text-quaternary').trim() || '#777',
-      border:     cs.getPropertyValue('--color-border-subtle').trim() || 'rgba(255,255,255,0.1)',
+      border: cs.getPropertyValue('--color-border-subtle').trim() || 'rgba(255,255,255,0.1)',
     }
 
     dataRef.current = { asks: displayAsks, bids: displayBids, maxSize, maxCum, colors }
@@ -218,11 +222,11 @@ export default function OrderBook() {
     const seen = new Set<string>()
     const setTarget = (row: RowData) => {
       seen.add(row.key)
-      const barTgt  = row.heatRatio * barW
-      const stepTgt = maxCum > 0  ? (row.cumulative / maxCum) * barW : 0
+      const barTgt = row.heatRatio * barW
+      const stepTgt = maxCum > 0 ? (row.cumulative / maxCum) * barW : 0
       const ex = m.get(row.key)
       if (ex) {
-        ex.barTgt  = barTgt
+        ex.barTgt = barTgt
         ex.stepTgt = stepTgt
       } else {
         m.set(row.key, { barCur: 0, barTgt, stepCur: 0, stepTgt })
@@ -245,13 +249,13 @@ export default function OrderBook() {
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
     ctx.clearRect(0, 0, w, h)
 
-    const { asks, bids, maxSize, maxCum, colors } = d
+    const { asks, bids, colors } = d
     const m = animRef.current
-    const barX    = HEAT_W + PW + SW
+    const barX = HEAT_W + PW + SW
     const spreadY = asks.length * ROW_H
 
     const stepXFor = (row: RowData) => m.get(row.key)?.stepCur ?? 0
-    const barWFor  = (row: RowData) => m.get(row.key)?.barCur ?? 0
+    const barWFor = (row: RowData) => m.get(row.key)?.barCur ?? 0
 
     function buildStepPath(rows: RowData[], startY: number) {
       const path = new Path2D()
@@ -281,7 +285,6 @@ export default function OrderBook() {
       ctx.fillStyle = row.whale ? WHALE_FILL : gradColor(stops, row.heatRatio)
       ctx.fillRect(0, y, HEAT_W, ROW_H)
 
-      const cumRatio = maxCum > 0 ? row.cumulative / maxCum : 0
       ctx.fillStyle = row.whale ? WHALE_FILL : gradColor(stops, row.heatRatio)
       ctx.fillRect(barX, y, barWidth, ROW_H)
 
@@ -365,12 +368,12 @@ export default function OrderBook() {
       const ease = 1 - Math.exp(-dt / 110)
       let active = false
       for (const v of animRef.current.values()) {
-        v.barCur  += (v.barTgt - v.barCur)  * ease
+        v.barCur += (v.barTgt - v.barCur) * ease
         v.stepCur += (v.stepTgt - v.stepCur) * ease
         if (Math.abs(v.barTgt - v.barCur) > 0.4 || Math.abs(v.stepTgt - v.stepCur) > 0.4) {
           active = true
         } else {
-          v.barCur  = v.barTgt
+          v.barCur = v.barTgt
           v.stepCur = v.stepTgt
         }
       }
@@ -389,21 +392,19 @@ export default function OrderBook() {
       const h = el.clientHeight
       const dpr = Math.min(2, window.devicePixelRatio || 1)
       dimsRef.current = { w, h, dpr }
-      canvas.width  = Math.round(w * dpr)
+      canvas.width = Math.round(w * dpr)
       canvas.height = Math.round(h * dpr)
-      canvas.style.width  = `${w}px`
+      canvas.style.width = `${w}px`
       canvas.style.height = `${h}px`
       rebuild()
     })
     ro.observe(el)
     return () => ro.disconnect()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // Rebuild when live book data arrives or mark price changes
   useEffect(() => {
     rebuild()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mark, askRows, bidRows])
 
   useEffect(() => {
@@ -418,7 +419,9 @@ export default function OrderBook() {
         <span className="text-[10px] font-medium uppercase tracking-widest text-text-quaternary">
           Order Book
         </span>
-        <span className={`text-[10px] uppercase tracking-widest ${hasLiveBook ? 'text-bullish-green' : 'text-text-quaternary'}`}>
+        <span
+          className={`text-[10px] uppercase tracking-widest ${hasLiveBook ? 'text-bullish-green' : 'text-text-quaternary'}`}
+        >
           {hasLiveBook ? 'Live' : 'Depth'}
         </span>
       </div>
@@ -427,8 +430,12 @@ export default function OrderBook() {
         style={{ height: 20 }}
       >
         <span className="leading-5" style={{ width: HEAT_W }} />
-        <span className="pl-1.5 leading-5" style={{ width: PW }}>Price</span>
-        <span className="pr-1.5 text-right leading-5" style={{ width: SW }}>Qty</span>
+        <span className="pl-1.5 leading-5" style={{ width: PW }}>
+          Price
+        </span>
+        <span className="pr-1.5 text-right leading-5" style={{ width: SW }}>
+          Qty
+        </span>
         <span className="pl-1 leading-5">Depth</span>
       </div>
       <div ref={wrapRef} className="relative min-h-0 flex-1">
