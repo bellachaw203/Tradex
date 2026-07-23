@@ -1,0 +1,21 @@
+name: Export circuit verifying keys
+description: >-
+  Verifies that every Groth16 verifying key committed under circuits/keys/ is
+  present and well-formed, then exports the VK_* variables the contract build
+  scripts read at compile time.
+
+  The contracts embed these verifying keys into the wasm via build.rs, so a
+  missing or malformed key is a build failure, not a runtime one.
+
+inputs:
+  keys-dir:
+    description: Directory holding the *_vk.json files.
+    required: false
+    default: circuits/keys
+
+runs:
+  using: composite
+  steps:
+    - name: Validate and export verifying keys
+      shell: bash
+      run: ./scripts/ci/circuit-keys.sh "${{ inputs.keys-dir }}"
