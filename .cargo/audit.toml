@@ -1,0 +1,25 @@
+# cargo-audit configuration — read by the "Rust advisories" job in
+# .github/workflows/security.yml (and by `cargo audit` locally).
+#
+# Policy: every vulnerability, unsound advisory, and yanked crate must block.
+# The only entries ignored below are *unmaintained* transitive macro crates
+# that arkworks / soroban pull in and that have no drop-in replacement — a
+# maintenance signal, not an exploitable flaw. Each is reviewed and dated.
+#
+# Anything not listed here still fails the build, including any NEW unmaintained
+# crate — so this list is the complete, auditable set of accepted exceptions.
+
+[advisories]
+ignore = [
+  # `derivative` — unmaintained. Pulled in transitively by ark-* (the Groth16
+  # proving stack). No maintained drop-in; removing it means arkworks dropping
+  # it upstream. Re-evaluate when the proof dependencies are next bumped.
+  "RUSTSEC-2024-0388",
+
+  # `paste` — unmaintained. Transitive via arkworks / soroban proc-macros.
+  # Widely depended on across the ecosystem; no replacement available yet.
+  "RUSTSEC-2024-0436",
+]
+
+# Reviewed: 2026-07-24. Revisit these when the arkworks/soroban dependency
+# versions change; drop an entry the moment upstream stops pulling the crate.
