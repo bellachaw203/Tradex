@@ -1,20 +1,53 @@
 #!/bin/sh
-# Pre-commit hook: run fmt and clippy before every commit.
-# Skip with: git commit --no-verify
+# Pre-commit hook — the same gates CI runs, on the machine where fixing them is
+# cheapest. Install with: make hooks
+#
+# Skip with: git commit --no-verify   (CI still enforces everything)
 
 set -e
 
-KEYS="$(git rev-parse --show-toplevel)/circuits/keys"
+ROOT="$(git rev-parse --show-toplevel)"
+KEYS="$ROOT/circuits/keys"
 
-echo "→ cargo fmt --all -- --check"
-cargo fmt --all -- --check
+# ── 1. Secrets ───────────────────────────────────────────────────────────────
+# First, and never skipped: a committed key is the one mistake a follow-up
+# commit cannot undo.
+echo "→ scanning staged changes for secrets"
+"$ROOT/scripts/ci/scan-secrets.sh" --staged
 
-echo "→ cargo clippy (workspace)"
-VK_COMMIT_JSON="$KEYS/order_commitment_vk.json" \
-VK_CANCEL_JSON="$KEYS/order_cancel_vk.json" \
-VK_MATCH_JSON="$KEYS/order_match_vk.json" \
-VK_NOTE_SPEND_JSON="$KEYS/note_spend_vk.json" \
-  cargo clippy --all-targets -- -D warnings
+# ── 2. Only check what changed ───────────────────────────────────────────────
+staged="$(git diff --cached --name-only --diff-filter=ACM)"
 
-echo "→ cargo clippy (rust-circuits)"
-cargo clippy --all-targets --manifest-path tools/rust-circuits/Cargo.toml -- -D warnings
+has_rust=$(printf '%s\n' "$staged" | grep -cE '\.rs$|Cargo\.(toml|lock)$' || true)
+has_app=$(printf  '%s\n' "$staged" | grep -cE '^app/' || true)
+
+# ── 3. Rust ──────────────────────────────────────────────────────────────────
+if [ "$has_rust" -gt 0 ]; then
+  echo "→ cargo fmt --all -- --check"
+  cargo fmt --all -- --check
+
+  echo "→ cargo clippy (workspace)"
+  VK_COMMIT_JSON="$KEYS/order_commitment_vk.json" \
+  VK_CANCEL_JSON="$KEYS/order_cancel_vk.json" \
+  VK_MATCH_JSON="$KEYS/order_match_vk.json" \
+  VK_NOTE_SPEND_JSON="$KEYS/note_spend_vk.json" \
+  VK_POOL_INSERT_JSON="$KEYS/shielded_insert_vk.json" \
+  VK_POOL_WITHDRAW_JSON="$KEYS/shielded_withdraw_vk.json" \
+    cargo clippy --workspace --all-targets -- -D warnings
+else
+  echo "· no Rust changes staged — skipping fmt and clippy"
+fi
+
+# ── 4. Frontend ──────────────────────────────────────────────────────────────
+if [ "$has_app" -gt 0 ]; then
+  if [ -d "$ROOT/app/node_modules" ]; then
+    echo "→ eslint + prettier (app)"
+    (cd "$ROOT/app" && npm run lint --silent && npm run format:check --silent)
+  else
+    echo "⚠ app/node_modules missing — skipping frontend lint (run 'npm ci' in app/)"
+  fi
+else
+  echo "· no frontend changes staged — skipping eslint and prettier"
+fi
+
+echo "✓ pre-commit checks passed"

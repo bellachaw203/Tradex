@@ -1,5 +1,18 @@
 #!/usr/bin/env bash
-# Full Stellar Testnet deployment for Tradex.
+# Full Stellar Testnet deployment for Tradex — the quick, one-shot path.
+#
+# ─────────────────────────────────────────────────────────────────────────────
+# For anything beyond a throwaway testnet deploy, use `deploy/deploy.sh`
+# instead. It is the script the CD pipeline runs and it adds what this one
+# does not: environment configuration, branch and clean-tree guard rails,
+# artifact validation before submitting, a deployment manifest, and rollback.
+#
+#   ./deploy/deploy.sh development --dry-run
+#   ./deploy/deploy.sh development
+#
+# This script is kept because it is self-contained and needs no configuration —
+# useful for spinning up a personal testnet deployment in one command.
+# ─────────────────────────────────────────────────────────────────────────────
 #
 #   1. creates + funds the deployer identity (if missing)
 #   2. builds the Soroban contracts to wasm
