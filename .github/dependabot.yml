@@ -1,0 +1,117 @@
+version: 2
+
+# Dependency updates for every ecosystem in the monorepo.
+#
+# Grouping matters here: a Soroban or Stellar SDK bump touches contracts and
+# frontend together, and reviewing fifteen separate PRs for one coordinated
+# upgrade wastes review attention. Patch-level updates are grouped hard; major
+# versions always arrive as their own PR, because they need a real decision.
+updates:
+  # ── Rust: workspace ──────────────────────────────────────────────────────
+  - package-ecosystem: cargo
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: '06:00'
+      timezone: Etc/UTC
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: 'chore(deps)'
+      include: scope
+    labels: [dependencies, rust]
+    groups:
+      soroban:
+        patterns: ['soroban-*', 'stellar-*']
+      arkworks:
+        patterns: ['ark-*']
+      rust-patch:
+        update-types: [minor, patch]
+    ignore:
+      # The toolchain is pinned in rust-toolchain.toml; a contract built
+      # against a different soroban-sdk major will not deploy to the same
+      # network. Major bumps here are a deliberate migration, not a PR to merge.
+      - dependency-name: soroban-sdk
+        update-types: [version-update:semver-major]
+
+  # ── Rust: standalone tool crates ─────────────────────────────────────────
+  - package-ecosystem: cargo
+    directory: /tools/e2e
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: 'chore(deps)'
+    labels: [dependencies, rust, tooling]
+    groups:
+      e2e-all:
+        patterns: ['*']
+
+  - package-ecosystem: cargo
+    directory: /keepers
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: 'chore(deps)'
+    labels: [dependencies, rust, keepers]
+    groups:
+      keepers-all:
+        patterns: ['*']
+
+  # ── Frontend ─────────────────────────────────────────────────────────────
+  - package-ecosystem: npm
+    directory: /app
+    schedule:
+      interval: weekly
+      day: monday
+      time: '06:00'
+      timezone: Etc/UTC
+    open-pull-requests-limit: 8
+    versioning-strategy: increase
+    commit-message:
+      prefix: 'chore(deps)'
+      prefix-development: 'chore(deps-dev)'
+      include: scope
+    labels: [dependencies, frontend]
+    groups:
+      stellar:
+        patterns: ['@stellar/*', '@creit.tech/*']
+      react:
+        patterns: ['react', 'react-dom', 'react-router', '@react-router/*', '@types/react*']
+      build-tooling:
+        patterns: ['vite', 'vite-*', '@vitejs/*', 'typescript', 'tailwindcss', '@tailwindcss/*']
+      linting:
+        patterns: ['eslint', 'eslint-*', '@eslint/*', 'typescript-eslint', 'prettier']
+      testing:
+        patterns: ['vitest', '@vitest/*', 'jsdom']
+    ignore:
+      # React major upgrades change rendering semantics across the whole
+      # trading UI — planned work, not a dependency PR.
+      - dependency-name: react
+        update-types: [version-update:semver-major]
+      - dependency-name: react-dom
+        update-types: [version-update:semver-major]
+
+  # ── The workflows themselves ─────────────────────────────────────────────
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: 'ci(deps)'
+    labels: [dependencies, ci]
+    groups:
+      actions:
+        patterns: ['*']
+
+  # ── Container images ─────────────────────────────────────────────────────
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: monthly
+    commit-message:
+      prefix: 'chore(deps)'
+    labels: [dependencies, docker]
