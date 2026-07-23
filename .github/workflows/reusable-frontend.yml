@@ -1,0 +1,176 @@
+
+# Reusable workflow: validate and build the Tradex frontend (app/).
+#
+# Called by ci.yml on every pull request, and by release.yml / cd.yml when a
+# deployable bundle is needed. The build is produced exactly once and passed
+# around as an artifact rather than rebuilt per consumer.
+name: (reusable) Frontend
+
+on:
+  workflow_call:
+    inputs:
+      upload-artifacts:
+        description: Upload the production bundle as a workflow artifact.
+        type: boolean
+        required: false
+        default: false
+      artifact-name:
+        description: Name of the uploaded artifact.
+        type: string
+        required: false
+        default: frontend-dist
+      node-versions:
+        description: JSON array of Node majors to validate against.
+        type: string
+        required: false
+        default: '["22"]'
+      environment:
+        description: Optional GitHub Environment supplying build-time VITE_* variables.
+        type: string
+        required: false
+        default: ''
+    outputs:
+      artifact-name:
+        description: Name of the uploaded bundle artifact, if any.
+        value: ${{ jobs.build.outputs.artifact-name }}
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: app
+
+jobs:
+  # ── Static analysis: no build required, so this is the fastest signal ─────
+  quality:
+    name: Lint, format & types (node ${{ matrix.node }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ${{ fromJSON(inputs.node-versions) }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: ./.github/actions/setup-node
+        with:
+          node-version: ${{ matrix.node }}
+
+      # Every check runs even if an earlier one fails, so one PR round-trip
+      # surfaces every problem rather than the first one.
+      - name: ESLint (zero warnings)
+        id: lint
+        continue-on-error: true
+        run: npm run lint
+
+      - name: Prettier formatting
+        id: format
+        continue-on-error: true
+        run: npm run format:check
+
+      - name: TypeScript type check
+        id: types
+        continue-on-error: true
+        run: npm run typecheck
+
+      - name: Collect results
+        run: |
+          fail=0
+          record() {
+            if [ "$2" = "success" ]; then
+              echo "| $1 | ✅ |" >> "$GITHUB_STEP_SUMMARY"
+            else
+              echo "| $1 | ❌ |" >> "$GITHUB_STEP_SUMMARY"
+              fail=1
+            fi
+          }
+          {
+            echo "### Frontend static analysis (node ${{ matrix.node }})"
+            echo
+            echo "| Check | Result |"
+            echo "| --- | :---: |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          record "ESLint"     "${{ steps.lint.outcome }}"
+          record "Prettier"   "${{ steps.format.outcome }}"
+          record "TypeScript" "${{ steps.types.outcome }}"
+          exit $fail
+
+  # ── Unit tests ───────────────────────────────────────────────────────────
+  test:
+    name: Unit tests (node ${{ matrix.node }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ${{ fromJSON(inputs.node-versions) }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: ./.github/actions/setup-node
+        with:
+          node-version: ${{ matrix.node }}
+
+      - name: Vitest
+        run: npm run test:coverage
+
+      - name: Upload coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-coverage-node${{ matrix.node }}
+          path: app/coverage
+          if-no-files-found: warn
+          retention-days: 7
+
+  # ── Production build + bundle validation ─────────────────────────────────
+  build:
+    name: Production build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: ${{ inputs.environment }}
+    outputs:
+      artifact-name: ${{ steps.publish.outputs.artifact-name }}
+    env:
+      # Vite inlines these into the client bundle at build time. They are
+      # deployment pointers, not credentials — VITE_MINTER_SECRET is
+      # deliberately never wired up here, because doing so would publish it.
+      VITE_PERP_ENGINE_ID: ${{ vars.VITE_PERP_ENGINE_ID }}
+      VITE_ORDERBOOK_ID: ${{ vars.VITE_ORDERBOOK_ID }}
+      VITE_COLLATERAL_TOKEN_ID: ${{ vars.VITE_COLLATERAL_TOKEN_ID }}
+      VITE_SOROBAN_RPC_URL: ${{ vars.VITE_SOROBAN_RPC_URL }}
+      VITE_NETWORK_PASSPHRASE: ${{ vars.VITE_NETWORK_PASSPHRASE }}
+      VITE_TEE_URL: ${{ vars.VITE_TEE_URL }}
+      VITE_SIMULATION_SOURCE: ${{ vars.VITE_SIMULATION_SOURCE }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: ./.github/actions/setup-node
+
+      - name: Validate environment configuration
+        working-directory: .
+        run: ./scripts/ci/validate-env.sh
+
+      - name: Build
+        run: npm run build
+
+      - name: Validate bundle
+        working-directory: .
+        run: ./scripts/ci/validate-frontend-build.sh
+
+      - name: Upload bundle
+        if: inputs.upload-artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.artifact-name }}
+          path: app/build/client
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Record artifact name
+        id: publish
+        if: inputs.upload-artifacts
+        run: echo "artifact-name=${{ inputs.artifact-name }}" >> "$GITHUB_OUTPUT"
