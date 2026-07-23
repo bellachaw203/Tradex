@@ -9,7 +9,7 @@
 # Run locally: docker run -p 9721:9721 -e CER_DEK=<hex> tee-match
 
 # ── Stage 1: Build ─────────────────────────────────────────────
-FROM rust:1.88-slim-bookworm AS builder
+FROM rust:1.97-slim-bookworm AS builder
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     pkg-config libssl-dev && rm -rf /var/lib/apt/lists/*
