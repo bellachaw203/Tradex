@@ -1,0 +1,16 @@
+# Docker ignore
+target/
+**/target/
+**/.git/
+**/node_modules/
+**/test_snapshots/
+.DS_Store
+*.md
+*.wasm
+
+# Heavy ceremony artifacts - not needed at runtime (only *.pk.bin and *_vk.json are)
+circuits/keys/*.ptau
+circuits/keys/*.r1cs
+circuits/keys/*.sym
+circuits/keys/*.zkey
+circuits/keys/*_js/

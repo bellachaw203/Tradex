@@ -1,0 +1,17 @@
+[workspace]
+resolver = "2"
+members = [
+  "contracts/types",
+  "contracts/collateral",
+  "contracts/orderbook",
+  "contracts/verifier-groth16",
+  "contracts/perp-engine",
+  "contracts/shielded-pool",
+  "crates/ultrahonk-soroban-verifier",
+  "tools/rust-circuits",
+]
+exclude = [
+  "examples",
+  "tiny",
+  "tools/e2e",
+]
