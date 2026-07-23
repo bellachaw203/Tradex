@@ -46,6 +46,10 @@ paths = [
   '''^circuits/keys/''',
   '''\.(zkey|r1cs|ptau|sym|wtns)$''',
   '''^tiny/circuits/''',
+  # Verifying-key JSON anywhere is a public parameter (e.g. tiny/sp1-prover/vk.json).
+  '''(^|/)vk\.json$''',
+  '''_vk\.json$''',
+  '''^tiny/sp1-prover/''',
 
   # Lockfiles are full of integrity hashes that look like high-entropy secrets.
   '''(^|/)package-lock\.json$''',
@@ -64,6 +68,13 @@ regexes = [
   # Public network identifiers, not credentials.
   '''Test SDF Network ; September 2015''',
   '''Public Global Stellar Network ; September 2015''',
+  # Stellar public addresses are safe to publish: contract ids (C…), account
+  # public keys (G…), and muxed accounts (M…). Only secret seeds (S…) are
+  # sensitive, and those are matched by the stellar-secret-seed rule above —
+  # which this allowlist deliberately does NOT cover.
+  '''\bC[A-Z2-7]{55}\b''',
+  '''\bG[A-Z2-7]{55}\b''',
+  '''\bM[A-Z2-7]{68}\b''',
 ]
 
 # Reviewed, intentional matches carry this marker on the same line.
