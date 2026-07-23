@@ -1,0 +1,41 @@
+name: Setup Node
+description: >-
+  Installs Node with the npm cache enabled and runs a clean, reproducible
+  install of the frontend workspace (app/).
+
+inputs:
+  node-version:
+    description: Node major version to install.
+    required: false
+    default: '22'
+  working-directory:
+    description: Directory containing package.json / package-lock.json.
+    required: false
+    default: app
+  install:
+    description: Run `npm ci`. Set to "false" for jobs that only need Node itself.
+    required: false
+    default: 'true'
+
+runs:
+  using: composite
+  steps:
+    - name: Install Node ${{ inputs.node-version }}
+      uses: actions/setup-node@v5
+      with:
+        node-version: ${{ inputs.node-version }}
+        cache: npm
+        cache-dependency-path: ${{ inputs.working-directory }}/package-lock.json
+
+    # `npm ci` (never `npm install`) so the lockfile is authoritative and a
+    # drifted lockfile fails the job instead of being silently rewritten.
+    - name: Install dependencies
+      if: inputs.install == 'true'
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: npm ci --no-audit --no-fund
+
+    - name: Report versions
+      shell: bash
+      run: |
+        echo "node $(node --version) / npm $(npm --version)"
