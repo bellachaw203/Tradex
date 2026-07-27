@@ -45,7 +45,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
       - uses: ./.github/actions/setup-rust
         with:
@@ -110,7 +110,7 @@ jobs:
           - name: circuit tooling
             packages: -p rust-circuits
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
       - uses: ./.github/actions/setup-rust
         with:
@@ -130,7 +130,7 @@ jobs:
       artifact-name: ${{ steps.publish.outputs.artifact-name }}
       wasm-sha256: ${{ steps.checksums.outputs.sha256 }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
       - uses: ./.github/actions/setup-rust
         with:
@@ -175,7 +175,7 @@ jobs:
 
       - name: Upload wasm artifacts
         if: inputs.upload-artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ inputs.artifact-name }}
           path: |
