@@ -22,7 +22,7 @@
   "dependencies": {
     "@creit.tech/stellar-wallets-kit": "^2.5.0",
     "@stellar/freighter-api": "^6.0.1",
-    "@stellar/stellar-sdk": "^16.0.1",
+    "@stellar/stellar-sdk": "^16.2.0",
     "@tabler/icons-react": "^3.44.0",
     "buffer": "^6.0.3",
     "framer-motion": "^12.40.0",
