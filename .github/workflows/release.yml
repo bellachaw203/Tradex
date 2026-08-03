@@ -52,7 +52,7 @@ jobs:
       tag: ${{ steps.bump.outputs.tag }}
       level: ${{ steps.bump.outputs.level }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
           # Use a PAT if tag pushes need to trigger downstream workflows;
@@ -92,7 +92,7 @@ jobs:
 
       - name: Upload release notes
         if: steps.bump.outputs.release == 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: release-notes
           path: release-notes.md
@@ -147,7 +147,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
           # A dispatched release just pushed a tag; fetch it rather than the
@@ -168,12 +168,12 @@ jobs:
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
           echo "Releasing $tag"
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: release-contracts
           path: release/contracts
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: release-frontend
           path: release/frontend
