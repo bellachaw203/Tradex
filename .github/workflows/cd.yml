@@ -139,20 +139,20 @@ jobs:
       manifest: ${{ steps.deploy.outputs.manifest }}
 
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           ref: ${{ needs.guard.outputs.sha }}
           fetch-depth: 0
 
       - name: Download contract artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: deploy-contracts-${{ needs.guard.outputs.environment }}-${{ github.run_id }}
           path: artifacts/contracts
 
       - name: Download frontend bundle
         if: needs.build-frontend.result == 'success'
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: deploy-frontend-${{ needs.guard.outputs.environment }}-${{ github.run_id }}
           path: artifacts/frontend
@@ -202,7 +202,7 @@ jobs:
       # which commit, by whom. Retained far longer than build artifacts.
       - name: Upload deployment record
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: deployment-${{ needs.guard.outputs.environment }}-${{ github.run_id }}
           path: |
@@ -220,7 +220,7 @@ jobs:
     environment:
       name: ${{ needs.guard.outputs.environment }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -235,7 +235,7 @@ jobs:
 
       - name: Upload rollback record
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: rollback-${{ needs.guard.outputs.environment }}-${{ github.run_id }}
           path: deploy/manifests/${{ needs.guard.outputs.environment }}/
