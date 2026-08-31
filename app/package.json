@@ -20,9 +20,9 @@
     "verify": "npm run lint && npm run format:check && npm run typecheck && npm run test && npm run build"
   },
   "dependencies": {
-    "@creit.tech/stellar-wallets-kit": "^2.5.0",
+    "@creit.tech/stellar-wallets-kit": "^2.6.0",
     "@stellar/freighter-api": "^6.0.1",
-    "@stellar/stellar-sdk": "^16.0.1",
+    "@stellar/stellar-sdk": "^17.0.1",
     "@tabler/icons-react": "^3.44.0",
     "buffer": "^6.0.3",
     "framer-motion": "^12.40.0",
